@@ -1,28 +1,19 @@
 """
 Aplicación Streamlit — Predicción de Consumo Energético de Edificios
-Proyecto end-to-end de Machine Learning (Capítulo 2 — Géron)
+Leiry Laura Mares Cure
 Dataset: UCI Energy Efficiency
-
-Secciones:
-  1. Análisis Exploratorio  (Etapas 1-3)
-  2. Modelado y Resultados  (Etapas 4-8)
 """
 
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.gridspec import GridSpec
-import matplotlib.ticker as mticker
-from matplotlib import patheffects
 import warnings
 import urllib.request
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
-# ─── CONFIGURACIÓN DE PÁGINA ─────────────────────────────────────────────────
+# ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Consumo Energético · ML",
     page_icon="◈",
@@ -30,10 +21,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ─── PALETA Y ESTILOS GLOBALES ────────────────────────────────────────────────
+# ─── PALETA ───────────────────────────────────────────────────────────────────
 CREAM      = "#F7F3EE"
-WHITE      = "#FFFFFF"
-CARD_BG    = "#FDFAF7"
 TEAL_DARK  = "#1A5C6B"
 TEAL_MID   = "#2A8A9E"
 TEAL_LIGHT = "#7EC8D8"
@@ -44,111 +33,74 @@ SAND_LT    = "#E8D9C0"
 CHARCOAL   = "#2C2C2C"
 GRAY_MID   = "#7A7A7A"
 GRAY_LT    = "#D4CFC9"
+WHITE      = "#FFFFFF"
 SUCCESS    = "#3D9970"
-WARN       = "#E8621A"
 
-# Matplotlib theme global
-plt.rcParams.update({
-    "figure.facecolor":  CREAM,
-    "axes.facecolor":    CREAM,
-    "axes.edgecolor":    GRAY_LT,
-    "axes.labelcolor":   CHARCOAL,
-    "axes.titlecolor":   CHARCOAL,
-    "axes.spines.top":   False,
-    "axes.spines.right": False,
-    "axes.grid":         True,
-    "grid.color":        GRAY_LT,
-    "grid.linewidth":    0.5,
-    "grid.alpha":        0.6,
-    "xtick.color":       GRAY_MID,
-    "ytick.color":       GRAY_MID,
-    "xtick.labelsize":   9,
-    "ytick.labelsize":   9,
-    "font.family":       "serif",
-    "text.color":        CHARCOAL,
-})
-
-# ─── CSS ─────────────────────────────────────────────────────────────────────
+# ─── CSS ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ── Reset y fondo ── */
 html, body, [data-testid="stAppViewContainer"],
 [data-testid="stMain"], .main { background: #F7F3EE !important; }
-
 [data-testid="stHeader"] { background: transparent !important; }
-[data-testid="stSidebar"] { background: #F0EAE0 !important; }
-
 section.main > div { padding-top: 0 !important; }
-.block-container { padding: 0 2.5rem 3rem 2.5rem !important; max-width: 1300px !important; }
-
-/* ── Tipografía global ── */
+.block-container { padding: 0 2.5rem 3rem 2.5rem !important; max-width: 1320px !important; }
 * { font-family: 'Source Serif 4', Georgia, serif !important; }
 
-/* ── Hero banner ── */
+/* ── HERO ── */
 .hero {
-    background: linear-gradient(135deg, #1A5C6B 0%, #2A8A9E 45%, #1A5C6B 100%);
-    border-radius: 0 0 32px 32px;
-    padding: 3.5rem 3rem 3rem;
+    background: linear-gradient(145deg, #EAF4F7 0%, #F3FAFE 40%, #EBF5F0 100%);
+    border-radius: 0 0 36px 36px;
+    padding: 3rem 3rem 2.6rem;
     margin: 0 -2.5rem 2.5rem -2.5rem;
-    position: relative;
-    overflow: hidden;
+    position: relative; overflow: hidden;
+    border-bottom: 2px solid #C4E3EC;
+    box-shadow: 0 6px 32px rgba(26,92,107,0.08);
 }
 .hero::before {
     content: "";
     position: absolute; inset: 0;
-    background: radial-gradient(ellipse 70% 80% at 85% 40%, rgba(200,169,110,0.18) 0%, transparent 70%),
-                radial-gradient(ellipse 40% 60% at 10% 80%, rgba(232,98,26,0.12) 0%, transparent 60%);
+    background:
+        radial-gradient(ellipse 55% 70% at 92% 50%, rgba(42,138,158,0.10) 0%, transparent 65%),
+        radial-gradient(ellipse 35% 50% at 5% 80%,  rgba(201,169,110,0.12) 0%, transparent 60%);
+    pointer-events: none;
+}
+.hero-grid {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: 2rem; position: relative;
 }
 .hero-badge {
     display: inline-block;
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: #E8D9C0;
+    background: rgba(26,92,107,0.10); border: 1px solid rgba(26,92,107,0.25);
+    color: #1A5C6B;
     font-family: 'JetBrains Mono', monospace !important;
-    font-size: 0.68rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 0.3rem 0.9rem;
-    border-radius: 20px;
-    margin-bottom: 1rem;
+    font-size: 0.67rem; letter-spacing: 0.13em; text-transform: uppercase;
+    padding: 0.28rem 0.85rem; border-radius: 20px; margin-bottom: 0.9rem;
 }
 .hero-title {
     font-family: 'Playfair Display', Georgia, serif !important;
-    font-size: clamp(2rem, 4vw, 3rem);
-    font-weight: 700;
-    color: #FFFFFF;
-    line-height: 1.15;
-    margin: 0 0 0.7rem;
-    position: relative;
+    font-size: clamp(1.8rem, 3.5vw, 2.75rem); font-weight: 700;
+    color: #1A5C6B; line-height: 1.15; margin: 0 0 0.5rem;
 }
-.hero-sub {
-    font-size: 1rem;
-    color: rgba(255,255,255,0.78);
-    max-width: 620px;
-    line-height: 1.6;
-    font-weight: 300;
-    font-style: italic;
-    position: relative;
+.hero-author {
+    font-family: 'Source Serif 4', serif !important;
+    font-size: 1rem; color: #E8621A; font-style: italic;
+    font-weight: 400; letter-spacing: 0.01em; margin-bottom: 1.4rem;
 }
-.hero-stats {
-    display: flex; gap: 2.5rem; margin-top: 2rem;
-    position: relative;
-}
+.hero-stats { display: flex; gap: 2rem; flex-wrap: wrap; }
 .hero-stat-val {
     font-family: 'Playfair Display', serif !important;
-    font-size: 1.8rem; font-weight: 700; color: #C9A96E;
-    line-height: 1;
+    font-size: 1.7rem; font-weight: 700; color: #1A5C6B; line-height: 1;
 }
 .hero-stat-lbl {
-    font-size: 0.72rem; color: rgba(255,255,255,0.6);
-    letter-spacing: 0.08em; text-transform: uppercase;
-    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.68rem; color: #7A7A7A; letter-spacing: 0.09em;
+    text-transform: uppercase; font-family: 'JetBrains Mono', monospace !important;
     margin-top: 0.2rem;
 }
+.hero-deco { flex-shrink: 0; opacity: 0.55; }
 
-/* ── Tabs ── */
+/* ── TABS ── */
 [data-testid="stTabs"] [data-baseweb="tab-list"] {
     background: transparent !important;
     border-bottom: 2px solid #D4CFC9 !important;
@@ -156,186 +108,121 @@ section.main > div { padding-top: 0 !important; }
 }
 [data-testid="stTabs"] [data-baseweb="tab"] {
     font-family: 'Playfair Display', serif !important;
-    font-size: 1.02rem !important;
-    font-weight: 600 !important;
-    color: #7A7A7A !important;
-    padding: 0.9rem 1.8rem !important;
-    border-bottom: 3px solid transparent !important;
-    margin-bottom: -2px !important;
-    background: transparent !important;
-    transition: all 0.2s ease !important;
+    font-size: 1rem !important; font-weight: 600 !important; color: #7A7A7A !important;
+    padding: 0.85rem 1.7rem !important; border-bottom: 3px solid transparent !important;
+    margin-bottom: -2px !important; background: transparent !important;
 }
 [data-testid="stTabs"] [aria-selected="true"] {
-    color: #1A5C6B !important;
-    border-bottom-color: #1A5C6B !important;
+    color: #1A5C6B !important; border-bottom-color: #1A5C6B !important;
 }
 
-/* ── Cards ── */
+/* ── CARDS ── */
 .card {
-    background: #FDFAF7;
-    border: 1px solid #E8D9C0;
-    border-radius: 16px;
-    padding: 1.6rem 1.8rem;
-    margin-bottom: 1.2rem;
-    box-shadow: 0 2px 12px rgba(26,92,107,0.06);
-    transition: box-shadow 0.2s ease;
+    background: #FDFAF7; border: 1px solid #E8D9C0;
+    border-radius: 16px; padding: 1.5rem 1.7rem; margin-bottom: 1rem;
+    box-shadow: 0 2px 10px rgba(26,92,107,0.05);
 }
-.card:hover { box-shadow: 0 6px 24px rgba(26,92,107,0.11); }
-
-.card-accent-teal  { border-left: 4px solid #1A5C6B; }
+.card-accent-teal   { border-left: 4px solid #1A5C6B; }
 .card-accent-orange { border-left: 4px solid #E8621A; }
-.card-accent-sand  { border-left: 4px solid #C9A96E; }
-.card-accent-green { border-left: 4px solid #3D9970; }
+.card-accent-sand   { border-left: 4px solid #C9A96E; }
 
-/* ── Section headers ── */
+/* ── SECTION ── */
 .section-label {
     font-family: 'JetBrains Mono', monospace !important;
-    font-size: 0.65rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: #E8621A;
-    margin-bottom: 0.3rem;
+    font-size: 0.64rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: #E8621A; margin-bottom: 0.25rem;
 }
 .section-title {
     font-family: 'Playfair Display', serif !important;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1A5C6B;
-    margin: 0 0 0.5rem;
-    line-height: 1.2;
+    font-size: 1.45rem; font-weight: 700; color: #1A5C6B; margin: 0 0 0.4rem; line-height: 1.2;
 }
-.section-body {
-    color: #5A5A5A;
-    font-size: 0.95rem;
-    line-height: 1.7;
-    max-width: 780px;
-}
+.section-body { color: #5A5A5A; font-size: 0.94rem; line-height: 1.7; max-width: 780px; }
 
-/* ── Metric chips ── */
+/* ── METRICS ── */
 .metric-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
 .metric-chip {
-    background: #FDFAF7;
-    border: 1px solid #D4CFC9;
-    border-radius: 12px;
-    padding: 0.9rem 1.2rem;
-    flex: 1; min-width: 130px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    background: #FDFAF7; border: 1px solid #D4CFC9; border-radius: 12px;
+    padding: 0.85rem 1.1rem; flex: 1; min-width: 120px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.04);
 }
 .metric-chip-val {
     font-family: 'Playfair Display', serif !important;
-    font-size: 1.55rem;
-    font-weight: 700;
-    color: #1A5C6B;
-    line-height: 1;
+    font-size: 1.5rem; font-weight: 700; color: #1A5C6B; line-height: 1;
 }
 .metric-chip-lbl {
-    font-size: 0.72rem;
-    color: #7A7A7A;
-    margin-top: 0.25rem;
+    font-size: 0.69rem; color: #7A7A7A; margin-top: 0.22rem;
     font-family: 'JetBrains Mono', monospace !important;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    letter-spacing: 0.05em; text-transform: uppercase;
 }
 
-/* ── Tablas ── */
-.styled-table-wrap { overflow-x: auto; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
-.styled-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.styled-table thead tr {
-    background: #1A5C6B; color: white;
-}
+/* ── TABLES ── */
+.styled-table-wrap { overflow-x: auto; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+.styled-table { width: 100%; border-collapse: collapse; font-size: 0.89rem; }
+.styled-table thead tr { background: #1A5C6B; color: white; }
 .styled-table thead th {
-    padding: 0.85rem 1.1rem;
-    text-align: left;
+    padding: 0.8rem 1rem; text-align: left;
     font-family: 'JetBrains Mono', monospace !important;
-    font-size: 0.75rem;
-    letter-spacing: 0.06em;
-    font-weight: 500;
+    font-size: 0.73rem; letter-spacing: 0.06em; font-weight: 500;
 }
-.styled-table tbody tr { border-bottom: 1px solid #E8D9C0; transition: background 0.15s; }
+.styled-table tbody tr { border-bottom: 1px solid #E8D9C0; }
 .styled-table tbody tr:hover { background: #F0EAE0; }
-.styled-table tbody td { padding: 0.75rem 1.1rem; color: #2C2C2C; }
+.styled-table tbody td { padding: 0.7rem 1rem; color: #2C2C2C; }
 .styled-table tbody tr:last-child { border-bottom: none; }
 .styled-table .num { font-family: 'JetBrains Mono', monospace !important; }
 .styled-table .best { color: #1A5C6B; font-weight: 600; }
-.styled-table .tag {
-    display: inline-block;
-    padding: 0.15rem 0.6rem;
-    border-radius: 20px;
-    font-size: 0.72rem;
-    font-family: 'JetBrains Mono', monospace !important;
+.tag {
+    display: inline-block; padding: 0.12rem 0.55rem; border-radius: 20px;
+    font-size: 0.71rem; font-family: 'JetBrains Mono', monospace !important;
 }
 .tag-green  { background:#D4EDDA; color:#1E7E34; }
 .tag-orange { background:#FDECD5; color:#C95200; }
 .tag-blue   { background:#D0ECF5; color:#1A5C6B; }
 
-/* ── Collapsible expander ── */
+/* ── EXPANDER ── */
 [data-testid="stExpander"] {
-    background: #FDFAF7 !important;
-    border: 1px solid #E8D9C0 !important;
-    border-radius: 12px !important;
-    margin-bottom: 0.8rem !important;
+    background: #FDFAF7 !important; border: 1px solid #E8D9C0 !important;
+    border-radius: 12px !important; margin-bottom: 0.8rem !important;
 }
 
-/* ── Code blocks ── */
-code, .code-block {
-    font-family: 'JetBrains Mono', monospace !important;
-    background: #EEE9E2 !important;
-    padding: 0.15rem 0.45rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    color: #C95200;
-}
+/* ── CALLOUTS ── */
+.callout { border-radius: 10px; padding: 0.9rem 1.1rem; margin: 0.7rem 0;
+           font-size: 0.89rem; line-height: 1.65; }
+.callout-teal   { background:#E0F2F6; border-left:3px solid #1A5C6B; color:#1A5C6B; }
+.callout-orange { background:#FEF3EC; border-left:3px solid #E8621A; color:#C95200; }
+.callout-sand   { background:#FBF5E8; border-left:3px solid #C9A96E; color:#7A5C2A; }
 
-/* ── Dividers ── */
-.divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #C9A96E 30%, #C9A96E 70%, transparent);
-    margin: 2rem 0;
-    opacity: 0.5;
-}
-
-/* ── Stage timeline ── */
-.timeline { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+/* ── TIMELINE ── */
+.timeline { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 1rem 0; }
 .tl-step {
-    background: #FDFAF7;
-    border: 1px solid #D4CFC9;
-    border-radius: 8px;
-    padding: 0.45rem 0.85rem;
-    font-size: 0.78rem;
-    color: #5A5A5A;
+    background: #FDFAF7; border: 1px solid #D4CFC9; border-radius: 8px;
+    padding: 0.4rem 0.8rem; font-size: 0.76rem; color: #5A5A5A;
     font-family: 'JetBrains Mono', monospace !important;
-    display: flex; align-items: center; gap: 0.4rem;
 }
-.tl-step.done { background:#D4EDDA; border-color:#3D9970; color:#1E7E34; }
+.tl-step.done   { background:#D4EDDA; border-color:#3D9970; color:#1E7E34; }
 .tl-step.active { background:#1A5C6B; border-color:#1A5C6B; color:white; }
 
-/* ── Predictor UI ── */
+/* ── PREDICTOR ── */
 .predictor-result {
     background: linear-gradient(135deg, #1A5C6B, #2A8A9E);
-    border-radius: 16px;
-    padding: 2rem;
-    text-align: center;
-    box-shadow: 0 8px 32px rgba(26,92,107,0.2);
+    border-radius: 16px; padding: 2rem; text-align: center;
+    box-shadow: 0 8px 32px rgba(26,92,107,0.18);
 }
 .predictor-val {
     font-family: 'Playfair Display', serif !important;
-    font-size: 3rem; font-weight: 700; color: #C9A96E; line-height: 1;
+    font-size: 2.8rem; font-weight: 700; color: #C9A96E; line-height: 1;
 }
-.predictor-unit { font-size: 0.9rem; color: rgba(255,255,255,0.7); margin-top: 0.3rem; }
 
-/* ── Info callouts ── */
-.callout {
-    border-radius: 10px; padding: 1rem 1.2rem;
-    margin: 0.8rem 0; font-size: 0.9rem; line-height: 1.6;
+/* ── DIVIDER ── */
+.divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #C9A96E 30%, #C9A96E 70%, transparent);
+    margin: 1.8rem 0; opacity: 0.45;
 }
-.callout-teal  { background:#E0F2F6; border-left:3px solid #1A5C6B; color:#1A5C6B; }
-.callout-orange { background:#FEF3EC; border-left:3px solid #E8621A; color:#C95200; }
-.callout-sand  { background:#FBF5E8; border-left:3px solid #C9A96E; color:#7A5C2A; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ─── DATOS Y MODELO ───────────────────────────────────────────────────────────
+# ─── DATOS ────────────────────────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
 def load_data():
     path = Path("data/ENB2012_data.xlsx")
@@ -345,10 +232,9 @@ def load_data():
         try:
             urllib.request.urlretrieve(url, path)
         except Exception:
-            # Generar datos sintéticos si no hay conexión
             np.random.seed(42)
             n = 768
-            df = pd.DataFrame({
+            data = pd.DataFrame({
                 "X1": np.random.choice([0.62,0.64,0.66,0.71,0.76,0.82,0.86,0.98], n),
                 "X2": np.random.choice([514.5,563.5,612.5,661.5,710.5,759.5,808.5], n),
                 "X3": np.random.choice([245.5,294.0,318.5,343.0,416.5,514.5], n),
@@ -360,11 +246,9 @@ def load_data():
                 "Y1": np.random.gamma(3, 8, n),
                 "Y2": np.random.gamma(2.5, 10, n),
             })
-            path.parent.mkdir(exist_ok=True)
-            df.to_excel(path, index=False)
+            data.to_excel(path, index=False)
 
-    df = pd.read_excel(path)
-    df = df.dropna()
+    df = pd.read_excel(path).dropna()
     col_map = {
         df.columns[0]: "compacidad_relativa",
         df.columns[1]: "superficie_m2",
@@ -375,12 +259,11 @@ def load_data():
         df.columns[6]: "area_acristalamiento",
         df.columns[7]: "dist_acristalamiento",
     }
-    # target columns
     if len(df.columns) >= 10:
         col_map[df.columns[8]] = "carga_calefaccion"
         col_map[df.columns[9]] = "carga_refrigeracion"
     df = df.rename(columns=col_map)
-    if "carga_calefaccion" in df.columns and "carga_refrigeracion" in df.columns:
+    if "carga_calefaccion" in df.columns:
         df["consumo_kwh"] = df["carga_calefaccion"] + df["carga_refrigeracion"]
     else:
         df["consumo_kwh"] = df.iloc[:, -1]
@@ -418,17 +301,16 @@ def train_models(_df):
         def fit(self, X, y=None): return self
         def transform(self, X, y=None):
             arr = X.values if hasattr(X, "values") else X
-            ratio_muros = arr[:, 2] / arr[:, 1]
-            ratio_techo = arr[:, 3] / arr[:, 1]
-            acrist_ef   = arr[:, 5] * arr[:, 0]
-            return np.c_[arr, ratio_muros, ratio_techo, acrist_ef]
+            return np.c_[arr,
+                         arr[:, 2] / arr[:, 1],
+                         arr[:, 3] / arr[:, 1],
+                         arr[:, 5] * arr[:, 0]]
 
     pipe = Pipeline([
         ("imputer",  SimpleImputer(strategy="median")),
         ("features", EnergyFeaturesAdder()),
         ("scaler",   StandardScaler()),
     ])
-
     X_train_p = pipe.fit_transform(X_train)
     X_test_p  = pipe.transform(X_test)
 
@@ -437,7 +319,6 @@ def train_models(_df):
         "Árbol de Decisión": DecisionTreeRegressor(random_state=42),
         "Random Forest":     RandomForestRegressor(n_estimators=100, random_state=42),
     }
-
     results = {}
     for name, m in models.items():
         m.fit(X_train_p, y_train)
@@ -449,7 +330,7 @@ def train_models(_df):
                           "cv_mean": cv_rmse.mean(), "cv_std": cv_rmse.std(),
                           "scores": cv_rmse}
 
-    best = models["Random Forest"]
+    best        = models["Random Forest"]
     y_pred_log  = best.predict(X_test_p)
     y_pred_real = np.expm1(y_pred_log)
     y_test_real = np.expm1(y_test)
@@ -458,8 +339,7 @@ def train_models(_df):
     rmse_real = np.sqrt(mean_squared_error(y_test_real, y_pred_real))
     mae_real  = mean_absolute_error(y_test_real, y_pred_real)
 
-    # Feature importance
-    ext_names = feat_cols + ["ratio_muros_sup", "ratio_techo_sup", "acrist_efectivo"]
+    ext_names   = feat_cols + ["ratio_muros_sup", "ratio_techo_sup", "acrist_efectivo"]
     importances = best.feature_importances_
     n_imp = min(len(importances), len(ext_names))
     fi = pd.Series(importances[:n_imp], index=ext_names[:n_imp]).sort_values(ascending=False)
@@ -484,31 +364,109 @@ with st.spinner("Cargando datos y entrenando modelos..."):
     df = load_data()
     md = train_models(df)
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-# ─── HERO ─────────────────────────────────────────────────────────────────────
+# Tema Plotly
+PLOTLY_BASE = dict(
+    paper_bgcolor=CREAM, plot_bgcolor=CREAM,
+    font=dict(family="Source Serif 4, Georgia, serif", color=CHARCOAL, size=12),
+    margin=dict(l=40, r=30, t=55, b=40),
+    hoverlabel=dict(bgcolor=WHITE, font_size=12,
+                    font_family="JetBrains Mono, monospace", bordercolor=GRAY_LT),
+)
+
+def apply_theme(fig, title=""):
+    fig.update_layout(**PLOTLY_BASE, title=dict(
+        text=title,
+        font=dict(size=13, color=TEAL_DARK, family="Playfair Display, serif"),
+        x=0.03, xanchor="left",
+    ))
+    fig.update_xaxes(showgrid=True, gridcolor=GRAY_LT, gridwidth=0.5,
+                     zeroline=False, linecolor=GRAY_LT)
+    fig.update_yaxes(showgrid=True, gridcolor=GRAY_LT, gridwidth=0.5,
+                     zeroline=False, linecolor=GRAY_LT)
+    return fig
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HERO
+# ══════════════════════════════════════════════════════════════════════════════
+HERO_SVG = """
+<svg width="270" height="175" viewBox="0 0 270 175" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10"  y="88"  width="26" height="77" rx="2" fill="#1A5C6B" opacity="0.16"/>
+  <rect x="13"  y="96"  width="6"  height="6"  rx="1" fill="#2A8A9E" opacity="0.35"/>
+  <rect x="23"  y="96"  width="6"  height="6"  rx="1" fill="#2A8A9E" opacity="0.28"/>
+  <rect x="13"  y="106" width="6"  height="6"  rx="1" fill="#E8621A" opacity="0.28"/>
+  <rect x="42"  y="58"  width="36" height="107" rx="2" fill="#1A5C6B" opacity="0.20"/>
+  <rect x="46"  y="66"  width="7"  height="7"  rx="1" fill="#2A8A9E" opacity="0.38"/>
+  <rect x="57"  y="66"  width="7"  height="7"  rx="1" fill="#C9A96E" opacity="0.38"/>
+  <rect x="68"  y="66"  width="7"  height="7"  rx="1" fill="#E8621A" opacity="0.32"/>
+  <rect x="46"  y="78"  width="7"  height="7"  rx="1" fill="#E8621A" opacity="0.26"/>
+  <rect x="57"  y="78"  width="7"  height="7"  rx="1" fill="#2A8A9E" opacity="0.32"/>
+  <rect x="68"  y="78"  width="7"  height="7"  rx="1" fill="#2A8A9E" opacity="0.22"/>
+  <rect x="46"  y="90"  width="7"  height="7"  rx="1" fill="#C9A96E" opacity="0.28"/>
+  <rect x="57"  y="90"  width="7"  height="7"  rx="1" fill="#E8621A" opacity="0.22"/>
+  <rect x="84"  y="38"  width="46" height="127" rx="2" fill="#2A8A9E" opacity="0.14"/>
+  <rect x="89"  y="46"  width="8"  height="8"  rx="1" fill="#1A5C6B" opacity="0.32"/>
+  <rect x="101" y="46"  width="8"  height="8"  rx="1" fill="#E8621A" opacity="0.36"/>
+  <rect x="113" y="46"  width="8"  height="8"  rx="1" fill="#1A5C6B" opacity="0.22"/>
+  <rect x="89"  y="59"  width="8"  height="8"  rx="1" fill="#C9A96E" opacity="0.32"/>
+  <rect x="101" y="59"  width="8"  height="8"  rx="1" fill="#1A5C6B" opacity="0.26"/>
+  <rect x="113" y="59"  width="8"  height="8"  rx="1" fill="#E8621A" opacity="0.28"/>
+  <rect x="89"  y="72"  width="8"  height="8"  rx="1" fill="#1A5C6B" opacity="0.18"/>
+  <rect x="101" y="72"  width="8"  height="8"  rx="1" fill="#C9A96E" opacity="0.30"/>
+  <line x1="107" y1="38" x2="107" y2="20" stroke="#1A5C6B" stroke-width="1.5" opacity="0.25"/>
+  <circle cx="107" cy="18" r="3" fill="#E8621A" opacity="0.40"/>
+  <rect x="136" y="68"  width="30" height="97" rx="2" fill="#1A5C6B" opacity="0.16"/>
+  <rect x="140" y="76"  width="7"  height="7"  rx="1" fill="#2A8A9E" opacity="0.32"/>
+  <rect x="151" y="76"  width="7"  height="7"  rx="1" fill="#C9A96E" opacity="0.28"/>
+  <rect x="140" y="88"  width="7"  height="7"  rx="1" fill="#E8621A" opacity="0.24"/>
+  <rect x="173" y="95" width="20" height="70" rx="2" fill="#C9A96E" opacity="0.16"/>
+  <rect x="177" y="103" width="5" height="5"  rx="1" fill="#1A5C6B" opacity="0.28"/>
+  <circle cx="220" cy="32"  r="7" fill="#1A5C6B" opacity="0.18"/>
+  <circle cx="247" cy="20"  r="5" fill="#E8621A" opacity="0.26"/>
+  <circle cx="254" cy="52"  r="8" fill="#2A8A9E" opacity="0.16"/>
+  <circle cx="233" cy="72"  r="5" fill="#C9A96E" opacity="0.28"/>
+  <circle cx="260" cy="88"  r="6" fill="#1A5C6B" opacity="0.18"/>
+  <circle cx="240" cy="108" r="4" fill="#E8621A" opacity="0.20"/>
+  <line x1="220" y1="32"  x2="247" y2="20"  stroke="#1A5C6B" stroke-width="0.9" opacity="0.16"/>
+  <line x1="247" y1="20"  x2="254" y2="52"  stroke="#1A5C6B" stroke-width="0.9" opacity="0.14"/>
+  <line x1="254" y1="52"  x2="233" y2="72"  stroke="#2A8A9E" stroke-width="0.9" opacity="0.16"/>
+  <line x1="233" y1="72"  x2="260" y2="88"  stroke="#2A8A9E" stroke-width="0.9" opacity="0.14"/>
+  <line x1="260" y1="88"  x2="240" y2="108" stroke="#E8621A" stroke-width="0.9" opacity="0.16"/>
+  <line x1="220" y1="32"  x2="254" y2="52"  stroke="#C9A96E" stroke-width="0.7" opacity="0.11"/>
+  <line x1="8" y1="167" x2="198" y2="167" stroke="#1A5C6B" stroke-width="1.2" opacity="0.16"/>
+</svg>
+"""
+
 st.markdown(f"""
 <div class="hero">
-  <div class="hero-badge">◈ Machine Learning · Regresión · UCI Energy Efficiency</div>
-  <h1 class="hero-title">Predicción de Consumo<br>Energético de Edificios</h1>
-  <p class="hero-sub">Proyecto end-to-end siguiendo la metodología del Capítulo 2 de
-    Hands-On Machine Learning — Aurélien Géron. Del análisis exploratorio al despliegue.</p>
-  <div class="hero-stats">
+  <div class="hero-grid">
     <div>
-      <div class="hero-stat-val">{len(df)}</div>
-      <div class="hero-stat-lbl">muestras</div>
+      <div class="hero-badge">◈ Machine Learning · Regresión · UCI Energy Efficiency</div>
+      <h1 class="hero-title">Predicción de Consumo<br>Energético de Edificios</h1>
+      <div class="hero-author">Leiry Laura Mares Cure</div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-val">{len(df)}</div>
+          <div class="hero-stat-lbl">muestras</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">{len(md['feat_cols'])}</div>
+          <div class="hero-stat-lbl">atributos</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">{md['rmse_real']:.2f}</div>
+          <div class="hero-stat-lbl">RMSE kWh/m²</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">3</div>
+          <div class="hero-stat-lbl">modelos</div>
+        </div>
+      </div>
     </div>
-    <div>
-      <div class="hero-stat-val">{len(md['feat_cols'])}</div>
-      <div class="hero-stat-lbl">atributos</div>
-    </div>
-    <div>
-      <div class="hero-stat-val">{md['rmse_real']:.2f}</div>
-      <div class="hero-stat-lbl">RMSE kWh/m²</div>
-    </div>
-    <div>
-      <div class="hero-stat-val">3</div>
-      <div class="hero-stat-lbl">modelos</div>
-    </div>
+    <div class="hero-deco">{HERO_SVG}</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -525,10 +483,7 @@ tab1, tab2 = st.tabs([
 # TAB 1 — ANÁLISIS EXPLORATORIO
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
-
-    st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
-
-    # ── Etapas 1–3 timeline ──
+    st.markdown("<div style='height:1.4rem'></div>", unsafe_allow_html=True)
     st.markdown("""
     <div class="timeline">
       <div class="tl-step done">01 · panorama general</div>
@@ -541,339 +496,290 @@ with tab1:
       <div class="tl-step">08 · despliegue</div>
     </div>
     """, unsafe_allow_html=True)
+    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-
-    # ── Objetivo de negocio + enmarcado ──
+    # Etapas 1 y 2
     col_a, col_b = st.columns([1.05, 1], gap="large")
-
     with col_a:
         st.markdown("""
         <div class="card card-accent-teal">
-          <div class="section-label">Etapa 1</div>
-          <div class="section-title">Panorama general</div>
-          <p class="section-body">
-            El modelo recibe las características geométricas y constructivas de un edificio
-            y produce una estimación numérica del consumo energético total (kWh/m²).
-            La predicción alimentará sistemas de gestión energética y priorización de renovaciones.
-          </p>
+          <div class="section-label">Etapa 1 · Panorama general</div>
+          <div class="section-title">Objetivo del proyecto</div>
+          <p class="section-body">El modelo recibe las características geométricas y constructivas
+          de un edificio y produce una estimación del consumo energético total (kWh/m²).
+          La predicción alimentará sistemas de gestión energética y priorización de renovaciones.</p>
         </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("""
         <div class="styled-table-wrap">
         <table class="styled-table">
-          <thead><tr>
-            <th>Dimensión</th><th>Clasificación</th>
-          </tr></thead>
+          <thead><tr><th>Dimensión</th><th>Clasificación</th></tr></thead>
           <tbody>
             <tr><td>Tipo de aprendizaje</td><td><span class="tag tag-blue">Supervisado</span></td></tr>
-            <tr><td>Tipo de tarea</td><td><span class="tag tag-teal" style="background:#D0ECF5;color:#1A5C6B">Regresión múltiple</span></td></tr>
+            <tr><td>Tipo de tarea</td><td><span class="tag tag-blue">Regresión múltiple</span></td></tr>
             <tr><td>Estrategia</td><td><span class="tag tag-green">Batch learning</span></td></tr>
             <tr><td>Métrica principal</td><td><span class="tag tag-orange">RMSE sobre log(consumo)</span></td></tr>
           </tbody>
-        </table>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="callout callout-sand" style="margin-top:1rem">
-          La transformación logarítmica log1p(y) simetriza la distribución del target,
-          penaliza errores proporcionalmente a la magnitud del consumo y estabiliza la varianza.
-          Se revierte con expm1() al interpretar resultados.
+        </table></div>
+        <div class="callout callout-sand" style="margin-top:0.9rem">
+          La transformación log1p(y) simetriza la distribución del target, penaliza errores
+          proporcionalmente y estabiliza la varianza. Se revierte con expm1() al reportar resultados.
         </div>
         """, unsafe_allow_html=True)
 
     with col_b:
-        st.markdown("""
-        <div class="card card-accent-orange">
-          <div class="section-label">Etapa 2 · Dataset</div>
-          <div class="section-title">UCI Energy Efficiency</div>
-          <p class="section-body">
-            768 simulaciones energéticas de edificios residenciales generadas con EnergyPlus.
-            Cada fila es una configuración única de parámetros geométricos y constructivos.
-          </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Tabla de atributos
-        attrs = {
-            "compacidad_relativa":  ("Compacidad relativa",   "0.62 – 0.98", "Continuo"),
-            "superficie_m2":        ("Superficie total (m²)", "514 – 808",   "Continuo"),
-            "area_muros_m2":        ("Área de muros (m²)",    "245 – 515",   "Continuo"),
-            "area_techo_m2":        ("Área de techo (m²)",    "110 – 220",   "Continuo"),
-            "altura_total_m":       ("Altura total (m)",       "3.5 – 7.0",  "Discreto"),
-            "area_acristalamiento": ("Área acristalamiento",  "0 – 0.4",     "Discreto"),
-            "dist_acristalamiento": ("Distribución acrist.",  "0 – 5",       "Categórico"),
-        }
-        rows = ""
-        for col, (label, rango, tipo) in attrs.items():
-            tag_cls = "tag-blue" if tipo == "Continuo" else ("tag-orange" if tipo == "Categórico" else "tag-green")
-            rows += f"<tr><td>{label}</td><td class='num'>{rango}</td><td><span class='tag {tag_cls}'>{tipo}</span></td></tr>"
-
+        attrs = [
+            ("Compacidad relativa",   "0.62 – 0.98", "Continuo"),
+            ("Superficie total (m²)", "514 – 808",   "Continuo"),
+            ("Área de muros (m²)",    "245 – 515",   "Continuo"),
+            ("Área de techo (m²)",    "110 – 220",   "Continuo"),
+            ("Altura total (m)",       "3.5 – 7.0",  "Discreto"),
+            ("Área acristalamiento",  "0 – 0.4",     "Discreto"),
+            ("Distribución acrist.",  "0 – 5",       "Categórico"),
+        ]
+        rows_attr = "".join(
+            f"<tr><td>{a[0]}</td><td class='num'>{a[1]}</td>"
+            f"<td><span class='tag {'tag-blue' if a[2]=='Continuo' else 'tag-green' if a[2]=='Discreto' else 'tag-orange'}'>{a[2]}</span></td></tr>"
+            for a in attrs
+        )
         st.markdown(f"""
+        <div class="card card-accent-orange">
+          <div class="section-label">Etapa 2 · Dataset UCI Energy Efficiency</div>
+          <div class="section-title">768 simulaciones energéticas</div>
+          <p class="section-body">Generadas con EnergyPlus. Cada fila es una configuración
+          única de parámetros geométricos y constructivos de edificios residenciales.</p>
+        </div>
         <div class="styled-table-wrap">
         <table class="styled-table">
           <thead><tr><th>Atributo</th><th>Rango</th><th>Tipo</th></tr></thead>
-          <tbody>{rows}</tbody>
-        </table>
-        </div>
+          <tbody>{rows_attr}</tbody>
+        </table></div>
         """, unsafe_allow_html=True)
 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
-    # ── Sección 3: Exploración ──
+    # Etapa 3
     st.markdown("""
     <div class="section-label">Etapa 3</div>
     <div class="section-title">Exploración y visualización de los datos</div>
     """, unsafe_allow_html=True)
+    st.markdown("<div style='height:0.7rem'></div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:0.8rem'></div>", unsafe_allow_html=True)
+    # 3.1
+    with st.expander("3.1  Estadísticas descriptivas", expanded=False):
+        desc = df[md["feat_cols"] + ["consumo_kwh"]].describe().T.round(3).reset_index()
+        desc.columns = ["Atributo"] + list(desc.columns[1:])
+        hdr = "".join(f"<th>{c}</th>" for c in desc.columns)
+        bdy = "".join(
+            "<tr><td>{}</td>".format(row["Atributo"]) +
+            "".join(f"<td class='num'>{row[c]}</td>" for c in desc.columns[1:]) +
+            "</tr>" for _, row in desc.iterrows()
+        )
+        st.markdown(f"""<div class="styled-table-wrap">
+        <table class="styled-table"><thead><tr>{hdr}</tr></thead><tbody>{bdy}</tbody></table>
+        </div>""", unsafe_allow_html=True)
 
-    # ── 3.1 Estadísticas descriptivas ──
-    with st.expander("3.1  Estadísticas descriptivas del conjunto de datos", expanded=False):
-        desc = df[md["feat_cols"] + ["consumo_kwh"]].describe().T.round(3)
-        desc.index.name = "Atributo"
-        desc = desc.reset_index()
-        header = "".join(f"<th>{c}</th>" for c in desc.columns)
-        rows_html = ""
-        for _, row in desc.iterrows():
-            cells = f"<td>{row['Atributo']}</td>"
-            for c in desc.columns[1:]:
-                cells += f"<td class='num'>{row[c]}</td>"
-            rows_html += f"<tr>{cells}</tr>"
-        st.markdown(f"""
-        <div class="styled-table-wrap">
-        <table class="styled-table">
-          <thead><tr>{header}</tr></thead>
-          <tbody>{rows_html}</tbody>
-        </table>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # ── 3.2 Distribución del target ──
+    # 3.2 — Distribución del target (Plotly)
     st.markdown("""
-    <div class="card card-accent-teal" style="margin-top:1rem">
+    <div class="card card-accent-teal" style="margin-top:0.8rem">
       <div class="section-label">3.2</div>
-      <div class="section-title" style="font-size:1.15rem">Distribución del consumo energético</div>
+      <div class="section-title" style="font-size:1.1rem">Distribución del consumo energético</div>
     </div>
     """, unsafe_allow_html=True)
 
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.2))
-    fig.patch.set_facecolor(CREAM)
-
-    # Panel izq: distribución original
-    ax = axes[0]
-    vals = df["consumo_kwh"]
-    n_bins = 40
-    counts, bins, patches = ax.hist(vals, bins=n_bins, color=TEAL_MID,
-                                     edgecolor=WHITE, linewidth=0.6, alpha=0.85)
-    # Colorear las barras por cuartil
-    q25, q75 = vals.quantile(0.25), vals.quantile(0.75)
-    for patch, left in zip(patches, bins[:-1]):
-        if left < q25:     patch.set_facecolor(TEAL_LIGHT)
-        elif left < q75:   patch.set_facecolor(TEAL_MID)
-        else:              patch.set_facecolor(ORANGE)
-
-    med = vals.median()
-    ax.axvline(med, color=ORANGE, lw=1.8, linestyle="--", alpha=0.9)
-    ax.text(med + 0.5, ax.get_ylim()[1]*0.92, f"Mediana\n{med:.1f}",
-            fontsize=8, color=ORANGE, va="top")
-    ax.set_xlabel("Consumo energético (kWh/m²)", fontsize=10, labelpad=6)
-    ax.set_ylabel("Frecuencia", fontsize=10)
-    skew = vals.skew()
-    ax.set_title(f"Escala original  ·  asimetría = {skew:.3f}", fontsize=11, pad=10)
-
-    # Leyenda manual
-    patches_leg = [
-        mpatches.Patch(color=TEAL_LIGHT, label="Q1  (bajo consumo)"),
-        mpatches.Patch(color=TEAL_MID,   label="Q2–Q3  (consumo medio)"),
-        mpatches.Patch(color=ORANGE,     label="Q4  (alto consumo — cola pesada)"),
-    ]
-    ax.legend(handles=patches_leg, fontsize=7.5, framealpha=0.8,
-              loc="upper right", facecolor=CREAM)
-
-    # Panel der: escala log
-    ax2 = axes[1]
+    vals     = df["consumo_kwh"]
     log_vals = np.log1p(vals)
-    counts2, bins2, patches2 = ax2.hist(log_vals, bins=n_bins, color=SAND,
-                                          edgecolor=WHITE, linewidth=0.6, alpha=0.85)
-    med2 = log_vals.median()
-    ax2.axvline(med2, color=TEAL_DARK, lw=1.8, linestyle="--", alpha=0.9)
-    ax2.text(med2 + 0.02, ax2.get_ylim()[1]*0.92, f"Mediana\n{med2:.2f}",
-             fontsize=8, color=TEAL_DARK, va="top")
-    ax2.set_xlabel("log1p(consumo)", fontsize=10, labelpad=6)
-    ax2.set_ylabel("Frecuencia", fontsize=10)
-    skew2 = log_vals.skew()
-    ax2.set_title(f"Escala logarítmica  ·  asimetría = {skew2:.3f}", fontsize=11, pad=10)
+    q25, q75 = float(vals.quantile(0.25)), float(vals.quantile(0.75))
 
-    arrow_props = dict(arrowstyle="->", color=TEAL_DARK, lw=1.5)
-    fig.text(0.5, 0.97, "La transformación logarítmica corrige la asimetría de la distribución",
-             ha="center", fontsize=9.5, color=GRAY_MID, style="italic")
+    hist_counts, hist_edges = np.histogram(vals, bins=40)
+    bin_mids   = [(hist_edges[i]+hist_edges[i+1])/2 for i in range(len(hist_edges)-1)]
+    bin_widths = np.diff(hist_edges)
+    bar_cols   = [TEAL_LIGHT if m < q25 else (ORANGE if m > q75 else TEAL_MID)
+                  for m in bin_mids]
 
-    plt.tight_layout(rect=[0, 0, 1, 0.94])
-    st.pyplot(fig, use_container_width=True)
-    plt.close()
+    fig_dist = make_subplots(rows=1, cols=2,
+                              subplot_titles=["Escala original", "Escala logarítmica (log1p)"],
+                              horizontal_spacing=0.10)
+    for idx in range(len(hist_counts)):
+        fig_dist.add_trace(go.Bar(
+            x=[bin_mids[idx]], y=[hist_counts[idx]], width=[bin_widths[idx]],
+            marker_color=bar_cols[idx], marker_line_width=0, showlegend=False,
+            hovertemplate=f"{hist_edges[idx]:.1f}–{hist_edges[idx+1]:.1f} kWh/m²<br>n: {hist_counts[idx]}<extra></extra>",
+        ), row=1, col=1)
 
-    # ── 3.3 Histogramas de todos los atributos ──
+    fig_dist.add_vline(x=float(vals.median()), line_dash="dash", line_color=ORANGE, line_width=2,
+                        annotation_text=f"Mediana {vals.median():.1f}",
+                        annotation_font_color=ORANGE, annotation_font_size=10,
+                        row=1, col=1)
+
+    lh_c, lh_e = np.histogram(log_vals, bins=40)
+    lh_mids    = [(lh_e[i]+lh_e[i+1])/2 for i in range(len(lh_e)-1)]
+    lh_widths  = np.diff(lh_e)
+    fig_dist.add_trace(go.Bar(
+        x=lh_mids, y=lh_c, width=lh_widths,
+        marker_color=SAND, marker_line_width=0, showlegend=False,
+        hovertemplate="log1p: %{x:.3f}<br>n: %{y}<extra></extra>",
+    ), row=1, col=2)
+    fig_dist.add_vline(x=float(log_vals.median()), line_dash="dash", line_color=TEAL_DARK, line_width=2,
+                        annotation_text=f"Mediana {log_vals.median():.2f}",
+                        annotation_font_color=TEAL_DARK, annotation_font_size=10,
+                        row=1, col=2)
+
+    fig_dist.update_layout(**PLOTLY_BASE, height=370, bargap=0.02,
+        title=dict(text=f"Asimetría original: {vals.skew():.3f}  →  log1p: {log_vals.skew():.3f}",
+                   font=dict(size=11, color=GRAY_MID), x=0.03))
+    fig_dist.update_xaxes(showgrid=True, gridcolor=GRAY_LT, tickfont_size=9)
+    fig_dist.update_yaxes(showgrid=True, gridcolor=GRAY_LT, tickfont_size=9)
+    st.plotly_chart(fig_dist, use_container_width=True)
+
+    # 3.3 — Histogramas (Plotly, sin superposición de etiquetas)
     st.markdown("""
-    <div class="card card-accent-sand" style="margin-top:0.5rem">
+    <div class="card card-accent-sand" style="margin-top:0.3rem">
       <div class="section-label">3.3</div>
-      <div class="section-title" style="font-size:1.15rem">Histogramas de todos los atributos numéricos</div>
+      <div class="section-title" style="font-size:1.1rem">Histogramas de los atributos de entrada</div>
     </div>
     """, unsafe_allow_html=True)
 
     num_cols = md["feat_cols"]
-    n = len(num_cols)
-    ncols_g = 4
-    nrows_g = (n + ncols_g - 1) // ncols_g
+    NCOLS    = 4
+    NROWS    = (len(num_cols) + NCOLS - 1) // NCOLS
+    pal_h    = [TEAL_DARK, TEAL_MID, TEAL_LIGHT, SAND, ORANGE_LT, ORANGE, SAND_LT, GRAY_MID]
+    titles_h = [c.replace("_", " ").title() for c in num_cols] + [""] * (NROWS * NCOLS - len(num_cols))
 
-    palette = [TEAL_DARK, TEAL_MID, TEAL_LIGHT, SAND, ORANGE_LT, ORANGE, GRAY_MID, SAND_LT]
-
-    fig2, axes2 = plt.subplots(nrows_g, ncols_g, figsize=(14, 3.2 * nrows_g))
-    fig2.patch.set_facecolor(CREAM)
-    axes2_flat = axes2.flatten()
-
+    fig_hist = make_subplots(
+        rows=NROWS, cols=NCOLS,
+        subplot_titles=titles_h,
+        horizontal_spacing=0.09,
+        vertical_spacing=0.22,      # más espacio vertical para evitar solapamiento
+    )
     for i, col in enumerate(num_cols):
-        ax = axes2_flat[i]
-        color = palette[i % len(palette)]
-        ax.hist(df[col], bins=30, color=color, edgecolor=WHITE, linewidth=0.5, alpha=0.88)
-        ax.set_title(col.replace("_", " "), fontsize=9, pad=6, color=CHARCOAL)
-        ax.tick_params(labelsize=7.5)
-        med_v = df[col].median()
-        ax.axvline(med_v, color=CHARCOAL, lw=1, linestyle=":", alpha=0.7)
+        r, c_i = divmod(i, NCOLS)
+        h_c, h_e = np.histogram(df[col].dropna(), bins=22)
+        h_m = [(h_e[k]+h_e[k+1])/2 for k in range(len(h_e)-1)]
+        h_w = np.diff(h_e)
+        fig_hist.add_trace(go.Bar(
+            x=h_m, y=h_c, width=h_w * 0.90,
+            marker_color=pal_h[i % len(pal_h)],
+            marker_line_width=0, showlegend=False,
+            name=col,
+            hovertemplate=f"{col}: %{{x:.2f}}<br>n: %{{y}}<extra></extra>",
+        ), row=r+1, col=c_i+1)
+        fig_hist.add_vline(x=float(df[col].median()), line_dash="dot",
+                            line_color=CHARCOAL, line_width=1, opacity=0.45,
+                            row=r+1, col=c_i+1)
 
-    for j in range(i + 1, len(axes2_flat)):
-        axes2_flat[j].set_visible(False)
+    # Ocultar subplots vacíos
+    for j in range(len(num_cols), NROWS * NCOLS):
+        r, c_i = divmod(j, NCOLS)
+        fig_hist.update_xaxes(visible=False, row=r+1, col=c_i+1)
+        fig_hist.update_yaxes(visible=False, row=r+1, col=c_i+1)
 
-    fig2.suptitle("Distribuciones de atributos de entrada", fontsize=12,
-                   color=CHARCOAL, y=1.01, style="italic")
-    plt.tight_layout()
-    st.pyplot(fig2, use_container_width=True)
-    plt.close()
+    fig_hist.update_layout(
+        **PLOTLY_BASE,
+        height=NROWS * 210,
+        bargap=0.03,
+        title=dict(text="Distribuciones — línea punteada = mediana",
+                   font=dict(size=11, color=GRAY_MID), x=0.03),
+    )
+    # Subtítulos más pequeños para no solapar
+    fig_hist.update_annotations(font_size=10, font_color=TEAL_DARK)
+    fig_hist.update_xaxes(showgrid=True, gridcolor=GRAY_LT, tickfont_size=8)
+    fig_hist.update_yaxes(showgrid=True, gridcolor=GRAY_LT, tickfont_size=8)
+    st.plotly_chart(fig_hist, use_container_width=True)
 
-    # ── 3.5 Correlaciones ──
+    # 3.5 — Correlaciones (Plotly)
     st.markdown("""
-    <div class="card card-accent-orange" style="margin-top:0.5rem">
+    <div class="card card-accent-orange" style="margin-top:0.3rem">
       <div class="section-label">3.5</div>
-      <div class="section-title" style="font-size:1.15rem">Mapa de correlaciones con el consumo</div>
+      <div class="section-title" style="font-size:1.1rem">Mapa de correlaciones con el consumo</div>
     </div>
     """, unsafe_allow_html=True)
 
-    col_corr, col_heat = st.columns([1, 1.4], gap="large")
+    col_corr, col_heat = st.columns([1, 1.45], gap="large")
 
     with col_corr:
-        corr_vals = md["corr"]
-
-        fig3, ax3 = plt.subplots(figsize=(5.5, 4.5))
-        fig3.patch.set_facecolor(CREAM)
-        colors_bar = [TEAL_MID if v >= 0 else ORANGE for v in corr_vals.values]
-        bars = ax3.barh(range(len(corr_vals)), corr_vals.values,
-                         color=colors_bar, edgecolor=WHITE, linewidth=0.5,
-                         height=0.65, alpha=0.9)
-        ax3.set_yticks(range(len(corr_vals)))
-        ax3.set_yticklabels([c.replace("_", "\n") for c in corr_vals.index], fontsize=8)
-        ax3.axvline(0, color=GRAY_LT, lw=1)
-        ax3.set_xlabel("Correlación de Pearson con consumo_kwh", fontsize=8.5)
-        ax3.set_title("Correlación de atributos\nvs. consumo total", fontsize=10, pad=8)
-        for bar, val in zip(bars, corr_vals.values):
-            xpos = val + 0.01 if val >= 0 else val - 0.01
-            ha = "left" if val >= 0 else "right"
-            ax3.text(xpos, bar.get_y() + bar.get_height()/2,
-                     f"{val:.3f}", va="center", ha=ha, fontsize=7.5, color=CHARCOAL)
-        plt.tight_layout()
-        st.pyplot(fig3, use_container_width=True)
-        plt.close()
+        corr_v = md["corr"]
+        fig_corr = go.Figure(go.Bar(
+            x=corr_v.values,
+            y=[c.replace("_", " ") for c in corr_v.index],
+            orientation="h",
+            marker_color=[TEAL_MID if v >= 0 else ORANGE for v in corr_v.values],
+            marker_line_width=0,
+            text=[f"{v:.3f}" for v in corr_v.values],
+            textposition="outside",
+            textfont=dict(size=10, family="JetBrains Mono"),
+            hovertemplate="%{y}: %{x:.4f}<extra></extra>",
+        ))
+        fig_corr.add_vline(x=0, line_color=GRAY_LT, line_width=1)
+        apply_theme(fig_corr, "Pearson vs. consumo_kwh")
+        fig_corr.update_layout(height=330, margin=dict(l=10, r=65, t=50, b=30))
+        fig_corr.update_xaxes(range=[-0.9, 0.9])
+        st.plotly_chart(fig_corr, use_container_width=True)
 
     with col_heat:
         corr_full = df[num_cols + ["consumo_kwh"]].corr()
-
-        fig4, ax4 = plt.subplots(figsize=(7, 5.5))
-        fig4.patch.set_facecolor(CREAM)
-        ax4.set_facecolor(CREAM)
-
-        from matplotlib.colors import LinearSegmentedColormap
-        cmap_custom = LinearSegmentedColormap.from_list(
-            "custom", [ORANGE, WHITE, TEAL_MID], N=256)
-
-        mask_upper = np.triu(np.ones_like(corr_full, dtype=bool), k=1)
-        im = ax4.imshow(corr_full.values, cmap=cmap_custom, vmin=-1, vmax=1, aspect="auto")
-
-        n_c = len(corr_full.columns)
-        ax4.set_xticks(range(n_c))
-        ax4.set_yticks(range(n_c))
-        labels = [c.replace("_", "\n") for c in corr_full.columns]
-        ax4.set_xticklabels(labels, fontsize=7.5, rotation=45, ha="right")
-        ax4.set_yticklabels(labels, fontsize=7.5)
-
-        for i in range(n_c):
-            for j in range(n_c):
-                val = corr_full.values[i, j]
-                txt_color = WHITE if abs(val) > 0.5 else CHARCOAL
-                ax4.text(j, i, f"{val:.2f}", ha="center", va="center",
-                         fontsize=7, color=txt_color)
-
-        # Grid lines
-        for k in range(n_c + 1):
-            ax4.axhline(k - 0.5, color=WHITE, lw=0.8)
-            ax4.axvline(k - 0.5, color=WHITE, lw=0.8)
-
-        cbar = fig4.colorbar(im, ax=ax4, fraction=0.03, pad=0.02)
-        cbar.ax.tick_params(labelsize=8)
-        ax4.set_title("Matriz de correlación completa", fontsize=10, pad=10)
-        plt.tight_layout()
-        st.pyplot(fig4, use_container_width=True)
-        plt.close()
+        hlabels   = [c.replace("_", "<br>") for c in corr_full.columns]
+        fig_heat  = go.Figure(go.Heatmap(
+            z=corr_full.values, x=hlabels, y=hlabels,
+            colorscale=[[0, ORANGE], [0.5, "#FFFFFF"], [1, TEAL_MID]],
+            zmin=-1, zmax=1,
+            text=[[f"{v:.2f}" for v in row] for row in corr_full.values],
+            texttemplate="%{text}",
+            textfont=dict(size=8, family="JetBrains Mono"),
+            hovertemplate="%{x} × %{y}: %{z:.3f}<extra></extra>",
+            colorbar=dict(thickness=12, len=0.8, tickfont=dict(size=9)),
+        ))
+        apply_theme(fig_heat, "Matriz de correlación completa")
+        fig_heat.update_layout(height=370, margin=dict(l=10, r=20, t=50, b=10))
+        fig_heat.update_xaxes(tickfont_size=8, tickangle=-35)
+        fig_heat.update_yaxes(tickfont_size=8)
+        st.plotly_chart(fig_heat, use_container_width=True)
 
     st.markdown("""
     <div class="callout callout-teal">
-      El coeficiente de Pearson solo mide correlaciones lineales y puede pasar por alto
-      relaciones no lineales. La compacidad relativa y el area de techo muestran
-      las correlaciones más fuertes con el consumo energético total.
+      El coeficiente de Pearson solo detecta relaciones lineales. La compacidad relativa
+      y el área de techo muestran la correlación absoluta más fuerte con el consumo total.
     </div>
     """, unsafe_allow_html=True)
 
-    # ── 3.6 Scatter de las features más correlacionadas ──
+    # 3.6 — Scatter (Plotly)
     st.markdown("""
     <div class="card card-accent-teal" style="margin-top:0.5rem">
       <div class="section-label">3.6</div>
-      <div class="section-title" style="font-size:1.15rem">Relaciones con el consumo — atributos clave</div>
+      <div class="section-title" style="font-size:1.1rem">Relaciones con el consumo — atributos clave</div>
     </div>
     """, unsafe_allow_html=True)
 
     top_feats = md["corr"].abs().nlargest(4).index.tolist()
-
-    fig5, axes5 = plt.subplots(1, 4, figsize=(14, 4))
-    fig5.patch.set_facecolor(CREAM)
+    fig_sc = make_subplots(rows=1, cols=4,
+        subplot_titles=[f"{f.replace('_',' ')}  (r={df[[f,'consumo_kwh']].corr().iloc[0,1]:.3f})"
+                        for f in top_feats],
+        horizontal_spacing=0.07)
 
     for idx, feat in enumerate(top_feats):
-        ax = axes5[idx]
-        sc = ax.scatter(df[feat], df["consumo_kwh"],
-                         c=df["consumo_kwh"], cmap="YlOrRd",
-                         s=14, alpha=0.55, edgecolors="none")
-        ax.set_xlabel(feat.replace("_", "\n"), fontsize=8.5)
-        if idx == 0:
-            ax.set_ylabel("consumo (kWh/m²)", fontsize=8.5)
-        r = df[[feat, "consumo_kwh"]].corr().iloc[0, 1]
-        ax.set_title(f"r = {r:.3f}", fontsize=9.5, color=TEAL_DARK, pad=6)
-        ax.tick_params(labelsize=8)
+        fig_sc.add_trace(go.Scatter(
+            x=df[feat], y=df["consumo_kwh"], mode="markers",
+            marker=dict(color=df["consumo_kwh"], colorscale="YlOrRd",
+                        size=5, opacity=0.6, line=dict(width=0),
+                        showscale=(idx == 3),
+                        colorbar=dict(title="kWh/m²", thickness=10, len=0.75,
+                                      tickfont=dict(size=8)) if idx == 3 else None),
+            showlegend=False,
+            hovertemplate=f"{feat}: %{{x:.2f}}<br>Consumo: %{{y:.1f}} kWh/m²<extra></extra>",
+        ), row=1, col=idx+1)
 
-    fig5.colorbar(sc, ax=axes5[-1], fraction=0.05, pad=0.04,
-                   label="kWh/m²").ax.tick_params(labelsize=8)
-    fig5.suptitle("Scatter de los 4 atributos con mayor correlación absoluta",
-                   fontsize=10.5, color=CHARCOAL, y=1.02, style="italic")
-    plt.tight_layout()
-    st.pyplot(fig5, use_container_width=True)
-    plt.close()
+    fig_sc.update_layout(**PLOTLY_BASE, height=340,
+        title=dict(text="Los 4 atributos con mayor correlación absoluta",
+                   font=dict(size=11, color=GRAY_MID), x=0.03))
+    fig_sc.update_annotations(font_size=9, font_color=TEAL_DARK)
+    fig_sc.update_xaxes(showgrid=True, gridcolor=GRAY_LT, tickfont_size=8)
+    fig_sc.update_yaxes(showgrid=True, gridcolor=GRAY_LT, tickfont_size=8)
+    st.plotly_chart(fig_sc, use_container_width=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — MODELADO Y RESULTADOS
 # ══════════════════════════════════════════════════════════════════════════════
 with tab2:
-
-    st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
-
+    st.markdown("<div style='height:1.4rem'></div>", unsafe_allow_html=True)
     st.markdown("""
     <div class="timeline">
       <div class="tl-step done">01 · panorama</div>
@@ -886,10 +792,8 @@ with tab2:
       <div class="tl-step done">08 · despliegue</div>
     </div>
     """, unsafe_allow_html=True)
+    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-
-    # ── Métricas finales destacadas ──
     st.markdown(f"""
     <div class="metric-row">
       <div class="metric-chip">
@@ -913,7 +817,6 @@ with tab2:
 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
-    # ── Tabla comparativa de modelos ──
     col_tbl, col_cv = st.columns([1.1, 1], gap="large")
 
     with col_tbl:
@@ -921,92 +824,58 @@ with tab2:
         <div class="section-label">Etapas 5 – 6</div>
         <div class="section-title">Comparativa de modelos</div>
         """, unsafe_allow_html=True)
-        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-
-        results = md["results"]
+        st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
         rows_m = ""
-        for name, res in results.items():
-            is_best = name == "Random Forest"
-            best_cls = "best" if is_best else ""
-            overfit = "Sobreajuste severo" if res["train"] < 0.001 else (
-                      "Sobreajuste leve" if res["train"] < res["cv_mean"] * 0.7 else "Equilibrado")
-            tag_map = {
-                "Sobreajuste severo": ("tag-orange", overfit),
-                "Sobreajuste leve":   ("tag-orange", overfit),
-                "Equilibrado":        ("tag-green",  overfit),
-            }
-            tag_cls, tag_txt = tag_map[overfit]
-            badge = " ◈ mejor" if is_best else ""
-            rows_m += f"""<tr>
-              <td class="{best_cls}">{name}{badge}</td>
-              <td class="num {best_cls}">{res['train']:.4f}</td>
-              <td class="num {best_cls}">{res['cv_mean']:.4f}</td>
-              <td class="num {best_cls}">± {res['cv_std']:.4f}</td>
-              <td><span class="tag {tag_cls}">{tag_txt}</span></td>
-            </tr>"""
-
+        for name, res in md["results"].items():
+            is_best  = name == "Random Forest"
+            bc       = "best" if is_best else ""
+            overfit  = ("Sobreajuste severo" if res["train"] < 0.001 else
+                        "Sobreajuste leve"   if res["train"] < res["cv_mean"] * 0.7 else "Equilibrado")
+            tc       = "tag-green" if overfit == "Equilibrado" else "tag-orange"
+            badge    = " ◈" if is_best else ""
+            rows_m  += (f"<tr><td class='{bc}'>{name}{badge}</td>"
+                        f"<td class='num {bc}'>{res['train']:.4f}</td>"
+                        f"<td class='num {bc}'>{res['cv_mean']:.4f}</td>"
+                        f"<td class='num {bc}'>± {res['cv_std']:.4f}</td>"
+                        f"<td><span class='tag {tc}'>{overfit}</span></td></tr>")
         st.markdown(f"""
         <div class="styled-table-wrap">
         <table class="styled-table">
-          <thead><tr>
-            <th>Modelo</th>
-            <th>RMSE Train</th>
-            <th>RMSE CV</th>
-            <th>Desv. Std.</th>
-            <th>Diagnóstico</th>
-          </tr></thead>
+          <thead><tr><th>Modelo</th><th>RMSE Train</th><th>RMSE CV</th>
+            <th>Desv. Std.</th><th>Diagnóstico</th></tr></thead>
           <tbody>{rows_m}</tbody>
-        </table>
-        </div>
+        </table></div>
         <div class="callout callout-teal" style="margin-top:0.8rem">
           El Árbol de Decisión muestra RMSE = 0 en entrenamiento pero ~0.034 en CV —
           señal clásica de sobreajuste. El Random Forest generaliza mejor al promediar
-          múltiples árboles entrenados en subconjuntos aleatorios.
+          múltiples árboles sobre subconjuntos aleatorios.
         </div>
         """, unsafe_allow_html=True)
 
     with col_cv:
         st.markdown("""
         <div class="section-label">Validación cruzada K=10</div>
-        <div class="section-title">Distribución de scores por modelo</div>
+        <div class="section-title">Dispersión de scores</div>
         """, unsafe_allow_html=True)
-        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-
-        fig6, ax6 = plt.subplots(figsize=(6.5, 4.5))
-        fig6.patch.set_facecolor(CREAM)
-
-        names_m = list(results.keys())
-        scores_all = [results[n]["scores"] for n in names_m]
-        bp = ax6.boxplot(scores_all, patch_artist=True, notch=True,
-                          widths=0.45, medianprops=dict(color=WHITE, lw=2))
-
+        st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
         box_colors = [TEAL_LIGHT, SAND, TEAL_DARK]
-        for patch, color in zip(bp["boxes"], box_colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.85)
-        for whisker in bp["whiskers"]:
-            whisker.set(color=GRAY_MID, lw=1.2, linestyle="--")
-        for cap in bp["caps"]:
-            cap.set(color=GRAY_MID, lw=1.5)
-        for flier in bp["fliers"]:
-            flier.set(marker="o", color=ORANGE, markersize=5, alpha=0.6)
-
-        ax6.set_xticklabels([n.replace(" ", "\n") for n in names_m], fontsize=9)
-        ax6.set_ylabel("RMSE (escala log)", fontsize=9.5)
-        ax6.set_title("Dispersión del error en 10 pliegues de CV", fontsize=10.5, pad=8)
-
-        # Líneas de referencia
-        for i, (name, sc) in enumerate(zip(names_m, scores_all), 1):
-            ax6.text(i, max(sc) * 1.002, f"μ={sc.mean():.4f}", ha="center",
-                     fontsize=7.5, color=CHARCOAL, va="bottom")
-
-        plt.tight_layout()
-        st.pyplot(fig6, use_container_width=True)
-        plt.close()
+        fig_box = go.Figure()
+        for (name, res), color in zip(md["results"].items(), box_colors):
+            fig_box.add_trace(go.Box(
+                y=res["scores"], name=name.replace(" ", "<br>"),
+                boxpoints="all", jitter=0.35, pointpos=0,
+                marker=dict(color=color, size=5, opacity=0.6),
+                line=dict(color=color, width=2),
+                fillcolor=color, opacity=0.75,
+                hovertemplate=f"{name}<br>RMSE: %{{y:.4f}}<extra></extra>",
+            ))
+        apply_theme(fig_box, "RMSE en 10 pliegues de validación cruzada")
+        fig_box.update_layout(height=360, showlegend=False)
+        fig_box.update_yaxes(title_text="RMSE (escala log)")
+        st.plotly_chart(fig_box, use_container_width=True)
 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
-    # ── Importancia de features ──
     col_fi, col_pred = st.columns([1, 1.05], gap="large")
 
     with col_fi:
@@ -1014,199 +883,163 @@ with tab2:
         <div class="section-label">Etapa 6 · Ajuste fino</div>
         <div class="section-title">Importancia de características</div>
         """, unsafe_allow_html=True)
-        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-
+        st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
         fi = md["feat_importances"]
-
-        fig7, ax7 = plt.subplots(figsize=(6.5, 5))
-        fig7.patch.set_facecolor(CREAM)
-
-        cmap_fi = plt.cm.get_cmap("YlOrRd", len(fi))
-        bar_colors = [cmap_fi(1 - i/len(fi)) for i in range(len(fi))]
-
-        bars7 = ax7.barh(range(len(fi)), fi.values, color=bar_colors,
-                          edgecolor=WHITE, linewidth=0.5, height=0.65)
-
-        # Etiquetas de valor al final de cada barra
-        for bar, val in zip(bars7, fi.values):
-            ax7.text(val + 0.003, bar.get_y() + bar.get_height()/2,
-                     f"{val:.3f}", va="center", fontsize=8.5, color=CHARCOAL)
-
-        ax7.set_yticks(range(len(fi)))
-        ax7.set_yticklabels([c.replace("_", "\n") for c in fi.index], fontsize=8.5)
-        ax7.set_xlabel("Importancia relativa (Gini)", fontsize=9)
-        ax7.set_title("Random Forest · importancia\nde características por pureza",
-                       fontsize=10, pad=8)
-        ax7.set_xlim(0, fi.values.max() * 1.15)
-
-        # Highlight top 3
-        for i in range(min(3, len(bars7))):
-            bars7[i].set_edgecolor(TEAL_DARK)
-            bars7[i].set_linewidth(1.5)
-
-        plt.tight_layout()
-        st.pyplot(fig7, use_container_width=True)
-        plt.close()
+        fi_colors = [TEAL_DARK, TEAL_MID, TEAL_MID, TEAL_LIGHT,
+                     SAND, SAND_LT, ORANGE_LT, ORANGE, GRAY_MID][:len(fi)]
+        fig_fi = go.Figure(go.Bar(
+            x=fi.values, y=[c.replace("_", " ") for c in fi.index], orientation="h",
+            marker_color=fi_colors, marker_line_width=0,
+            text=[f"{v:.3f}" for v in fi.values], textposition="outside",
+            textfont=dict(size=10, family="JetBrains Mono"),
+            hovertemplate="%{y}: %{x:.4f}<extra></extra>",
+        ))
+        apply_theme(fig_fi, "Random Forest · importancia por pureza de Gini")
+        fig_fi.update_layout(height=360, margin=dict(l=10, r=70, t=50, b=30))
+        fig_fi.update_xaxes(range=[0, fi.values.max() * 1.28])
+        st.plotly_chart(fig_fi, use_container_width=True)
 
     with col_pred:
         st.markdown("""
         <div class="section-label">Etapa 7 · Test set</div>
         <div class="section-title">Predicciones vs. valores reales</div>
         """, unsafe_allow_html=True)
-        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
+        y_real  = md["y_test_real"].values
+        y_pred  = md["y_pred_real"]
+        errors  = y_pred - y_real
+        lim_min = float(min(y_real.min(), y_pred.min())) - 1
+        lim_max = float(max(y_real.max(), y_pred.max())) + 1
 
-        y_real = md["y_test_real"].values
-        y_pred = md["y_pred_real"]
-        errors = y_pred - y_real
-
-        fig8, axes8 = plt.subplots(1, 2, figsize=(7, 4.5))
-        fig8.patch.set_facecolor(CREAM)
-
-        # Scatter pred vs real
-        ax_sc = axes8[0]
-        lims = [min(y_real.min(), y_pred.min()) - 2,
-                max(y_real.max(), y_pred.max()) + 2]
-        ax_sc.scatter(y_real, y_pred, c=errors, cmap="RdYlGn_r",
-                       s=18, alpha=0.65, edgecolors="none",
-                       vmin=-np.percentile(np.abs(errors), 95),
-                       vmax= np.percentile(np.abs(errors), 95))
-        ax_sc.plot(lims, lims, "--", color=TEAL_DARK, lw=1.5, alpha=0.7, label="Predicción perfecta")
-        ax_sc.set_xlim(lims); ax_sc.set_ylim(lims)
-        ax_sc.set_xlabel("Consumo real (kWh/m²)", fontsize=8.5)
-        ax_sc.set_ylabel("Consumo predicho (kWh/m²)", fontsize=8.5)
-        ax_sc.set_title("Predicho vs. Real", fontsize=10, pad=6)
-        ax_sc.legend(fontsize=7.5, loc="upper left")
-
-        # Histograma de residuos
-        ax_res = axes8[1]
-        ax_res.hist(errors, bins=30, color=TEAL_MID, edgecolor=WHITE,
-                     linewidth=0.5, alpha=0.85)
-        ax_res.axvline(0, color=ORANGE, lw=1.8, linestyle="--")
-        ax_res.axvline(errors.mean(), color=TEAL_DARK, lw=1.5, linestyle=":",
-                        label=f"Media: {errors.mean():.2f}")
-        ax_res.set_xlabel("Residuo (predicho − real)", fontsize=8.5)
-        ax_res.set_ylabel("Frecuencia", fontsize=8.5)
-        ax_res.set_title("Distribución de residuos", fontsize=10, pad=6)
-        ax_res.legend(fontsize=7.5)
-
-        plt.tight_layout()
-        st.pyplot(fig8, use_container_width=True)
-        plt.close()
+        fig_pv = make_subplots(rows=1, cols=2,
+            subplot_titles=["Predicho vs. Real", "Distribución de residuos"],
+            horizontal_spacing=0.12)
+        fig_pv.add_trace(go.Scatter(
+            x=y_real, y=y_pred, mode="markers",
+            marker=dict(color=errors, colorscale="RdYlGn_r", size=5, opacity=0.65,
+                        line=dict(width=0),
+                        cmin=-float(np.percentile(np.abs(errors), 95)),
+                        cmax= float(np.percentile(np.abs(errors), 95)),
+                        showscale=True,
+                        colorbar=dict(title="Error", thickness=10, len=0.7, tickfont=dict(size=8))),
+            showlegend=False,
+            hovertemplate="Real: %{x:.1f}<br>Pred: %{y:.1f}<extra></extra>",
+        ), row=1, col=1)
+        fig_pv.add_trace(go.Scatter(
+            x=[lim_min, lim_max], y=[lim_min, lim_max], mode="lines",
+            line=dict(color=TEAL_DARK, dash="dash", width=1.5),
+            showlegend=False, hoverinfo="skip",
+        ), row=1, col=1)
+        eh_c, eh_e = np.histogram(errors, bins=30)
+        eh_m = [(eh_e[k]+eh_e[k+1])/2 for k in range(len(eh_e)-1)]
+        fig_pv.add_trace(go.Bar(
+            x=eh_m, y=eh_c, width=np.diff(eh_e),
+            marker_color=TEAL_MID, marker_line_width=0, showlegend=False,
+            hovertemplate="Residuo: %{x:.2f}<br>n: %{y}<extra></extra>",
+        ), row=1, col=2)
+        fig_pv.add_vline(x=0, line_dash="dash", line_color=ORANGE, line_width=2, row=1, col=2)
+        fig_pv.add_vline(x=float(errors.mean()), line_dash="dot",
+                          line_color=TEAL_DARK, line_width=1.5, row=1, col=2,
+                          annotation_text=f"μ={errors.mean():.2f}",
+                          annotation_font_size=9, annotation_font_color=TEAL_DARK)
+        fig_pv.update_layout(**PLOTLY_BASE, height=360, bargap=0.04)
+        fig_pv.update_annotations(font_size=10)
+        fig_pv.update_xaxes(showgrid=True, gridcolor=GRAY_LT, tickfont_size=9)
+        fig_pv.update_yaxes(showgrid=True, gridcolor=GRAY_LT, tickfont_size=9)
+        st.plotly_chart(fig_pv, use_container_width=True)
 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
-    # ── Rendimiento por subgrupos ──
+    # Subgrupos
     st.markdown("""
-    <div class="section-label">Etapa 8 · Evaluación por subgrupos</div>
-    <div class="section-title">Análisis de rendimiento segmentado</div>
+    <div class="section-label">Etapa 8 · Evaluación segmentada</div>
+    <div class="section-title">Rendimiento por subgrupos del test set</div>
     """, unsafe_allow_html=True)
     st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
 
-    from sklearn.metrics import mean_squared_error as mse_fn
+    from sklearn.metrics import mean_squared_error as _mse
 
-    def subgroup_rmse(mask_col, values, label_prefix):
-        rows_sg = []
-        for val in sorted(df.loc[md["X_test"].index, mask_col].unique()):
-            mask = md["X_test"][mask_col].values == val
-            if mask.sum() == 0:
-                continue
-            y_s = md["y_test_real"].values[mask]
+    def subgroup_rmse(col_name, prefix):
+        out = []
+        for val in sorted(md["X_test"][col_name].unique()):
+            mask = md["X_test"][col_name].values == val
+            if not mask.sum(): continue
+            y_s  = md["y_test_real"].values[mask]
             yp_s = md["y_pred_real"][mask]
-            rmse_s = np.sqrt(mse_fn(y_s, yp_s))
-            rows_sg.append({
-                "Segmento": f"{label_prefix} = {val}",
-                "n": int(mask.sum()),
-                "RMSE (kWh/m²)": round(rmse_s, 3),
-                "Error relativo (%)": round(rmse_s / y_s.mean() * 100, 1),
-            })
-        return rows_sg
+            rs   = np.sqrt(_mse(y_s, yp_s))
+            out.append({"Segmento": f"{prefix} {val}", "n": int(mask.sum()),
+                        "RMSE (kWh/m²)": round(rs, 3),
+                        "Error relativo (%)": round(rs / y_s.mean() * 100, 1)})
+        return out
 
-    # Altura
-    sg_altura = subgroup_rmse("altura_total_m", None, "Altura (m)")
-    # Acristalamiento
-    sg_acrist = subgroup_rmse("area_acristalamiento", None, "Acristalamiento")
+    all_sg   = subgroup_rmse("altura_total_m", "Alt.") + subgroup_rmse("area_acristalamiento", "Acrist.")
+    global_r = md["rmse_real"]
 
-    all_sg = sg_altura + sg_acrist
-
-    if all_sg:
-        rows_sg_html = ""
-        for row in all_sg:
-            err_pct = row["Error relativo (%)"]
-            tag_cls = "tag-green" if err_pct < 8 else ("tag-orange" if err_pct < 15 else "tag-orange")
-            rows_sg_html += f"""<tr>
-              <td>{row['Segmento']}</td>
-              <td class="num">{row['n']}</td>
-              <td class="num">{row['RMSE (kWh/m²)']}</td>
-              <td><span class="tag {tag_cls}">{err_pct}%</span></td>
-            </tr>"""
-
-        col_sg1, col_sg2 = st.columns([1, 1], gap="large")
-        with col_sg1:
+    col_sg1, col_sg2 = st.columns([1, 1.2], gap="large")
+    with col_sg1:
+        if all_sg:
+            rows_sg = "".join(
+                f"<tr><td>{r['Segmento']}</td><td class='num'>{r['n']}</td>"
+                f"<td class='num'>{r['RMSE (kWh/m²)']}</td>"
+                f"<td><span class='tag {'tag-green' if r['Error relativo (%)'] < 8 else 'tag-orange'}'>"
+                f"{r['Error relativo (%)']}%</span></td></tr>"
+                for r in all_sg
+            )
             st.markdown(f"""
             <div class="styled-table-wrap">
             <table class="styled-table">
-              <thead><tr>
-                <th>Segmento</th><th>n muestras</th>
-                <th>RMSE kWh/m²</th><th>Error relativo</th>
-              </tr></thead>
-              <tbody>{rows_sg_html}</tbody>
-            </table>
-            </div>
+              <thead><tr><th>Segmento</th><th>n</th><th>RMSE kWh/m²</th><th>Error rel.</th></tr></thead>
+              <tbody>{rows_sg}</tbody>
+            </table></div>
             <div class="callout callout-sand" style="margin-top:0.8rem">
-              Si el RMSE varía sustancialmente entre subgrupos, el modelo tiene sesgos
-              que podrían requerir features adicionales o modelos especializados por segmento.
+              Variación notable entre subgrupos indica sesgo del modelo que podría requerir
+              features adicionales o modelos especializados por segmento.
             </div>
             """, unsafe_allow_html=True)
 
-        with col_sg2:
-            # Bar chart de RMSE por subgrupo
-            fig9, ax9 = plt.subplots(figsize=(6, 4))
-            fig9.patch.set_facecolor(CREAM)
-
-            segs  = [r["Segmento"].replace("Acristalamiento = ", "Acrist. ")
-                                   .replace("Altura (m) = ", "Alt. ") for r in all_sg]
+    with col_sg2:
+        if all_sg:
+            segs  = [r["Segmento"] for r in all_sg]
             rmses = [r["RMSE (kWh/m²)"] for r in all_sg]
-            bar_c = [TEAL_MID if "Alt." in s else ORANGE_LT for s in segs]
-
-            b9 = ax9.bar(range(len(segs)), rmses, color=bar_c,
-                          edgecolor=WHITE, linewidth=0.5, width=0.6)
-            ax9.set_xticks(range(len(segs)))
-            ax9.set_xticklabels(segs, rotation=40, ha="right", fontsize=8)
-            ax9.set_ylabel("RMSE (kWh/m²)", fontsize=9)
-            ax9.set_title("RMSE por subgrupo del test set", fontsize=10, pad=8)
-            ax9.axhline(md["rmse_real"], color=TEAL_DARK, lw=1.5,
-                         linestyle="--", alpha=0.7, label=f"RMSE global {md['rmse_real']:.2f}")
-            ax9.legend(fontsize=8)
-            for bar, val in zip(b9, rmses):
-                ax9.text(bar.get_x() + bar.get_width()/2, val + 0.05,
-                         f"{val:.2f}", ha="center", fontsize=8, color=CHARCOAL)
-            plt.tight_layout()
-            st.pyplot(fig9, use_container_width=True)
-            plt.close()
+            sg_c  = [TEAL_MID if "Alt." in s else ORANGE_LT for s in segs]
+            fig_sg = go.Figure()
+            fig_sg.add_trace(go.Bar(
+                x=segs, y=rmses, marker_color=sg_c, marker_line_width=0,
+                text=[f"{v:.2f}" for v in rmses], textposition="outside",
+                textfont=dict(size=10, family="JetBrains Mono"),
+                hovertemplate="%{x}: %{y:.3f} kWh/m²<extra></extra>",
+            ))
+            fig_sg.add_hline(y=global_r, line_dash="dash", line_color=TEAL_DARK, line_width=1.5,
+                              annotation_text=f"RMSE global {global_r:.2f}",
+                              annotation_font_size=10, annotation_font_color=TEAL_DARK)
+            apply_theme(fig_sg, "RMSE por subgrupo del test set")
+            fig_sg.update_layout(height=355, xaxis_tickangle=-30)
+            fig_sg.update_yaxes(title_text="RMSE (kWh/m²)")
+            st.plotly_chart(fig_sg, use_container_width=True)
 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
-    # ── Predictor interactivo ──
+    # Simulador
     st.markdown("""
     <div class="section-label">Etapa 8 · Despliegue</div>
     <div class="section-title">Simulador de consumo energético</div>
     <p class="section-body">
       Introduce las características de un edificio para obtener una predicción
-      del consumo energético total usando el modelo Random Forest entrenado.
+      usando el modelo Random Forest entrenado.
     </p>
     """, unsafe_allow_html=True)
-    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
 
     col_inp1, col_inp2, col_result = st.columns([1, 1, 1], gap="large")
 
     with col_inp1:
         st.markdown("<div class='card card-accent-teal'>", unsafe_allow_html=True)
-        comp_rel  = st.slider("Compacidad relativa",
-                               float(df["compacidad_relativa"].min()),
-                               float(df["compacidad_relativa"].max()), 0.75, 0.01)
-        sup_m2    = st.slider("Superficie total (m²)",
-                               float(df["superficie_m2"].min()),
-                               float(df["superficie_m2"].max()), 660.0, 10.0)
+        comp_rel   = st.slider("Compacidad relativa",
+                                float(df["compacidad_relativa"].min()),
+                                float(df["compacidad_relativa"].max()), 0.75, 0.01)
+        sup_m2     = st.slider("Superficie total (m²)",
+                                float(df["superficie_m2"].min()),
+                                float(df["superficie_m2"].max()), 660.0, 10.0)
         area_muros = st.slider("Área de muros (m²)",
                                 float(df["area_muros_m2"].min()),
                                 float(df["area_muros_m2"].max()), 318.5, 10.0)
@@ -1217,149 +1050,147 @@ with tab2:
         area_techo = st.slider("Área de techo (m²)",
                                 float(df["area_techo_m2"].min()),
                                 float(df["area_techo_m2"].max()), 147.0, 5.0)
-        altura     = st.selectbox("Altura total (m)", sorted(df["altura_total_m"].unique()), index=0)
-        acrist     = st.selectbox("Área acristalamiento", sorted(df["area_acristalamiento"].unique()), index=2)
+        altura     = st.selectbox("Altura total (m)",
+                                   sorted(df["altura_total_m"].unique()), index=0)
+        acrist     = st.selectbox("Área acristalamiento",
+                                   sorted(df["area_acristalamiento"].unique()), index=2)
         dist_acr   = st.selectbox("Distribución acristalamiento",
                                    sorted(df["dist_acristalamiento"].unique()), index=0)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_result:
-        input_vals = {
-            "compacidad_relativa":   comp_rel,
-            "superficie_m2":         sup_m2,
-            "area_muros_m2":         area_muros,
-            "area_techo_m2":         area_techo,
-            "altura_total_m":        float(altura),
-            "area_acristalamiento":  float(acrist),
-            "dist_acristalamiento":  float(dist_acr),
+        inp = {
+            "compacidad_relativa":  comp_rel,
+            "superficie_m2":        sup_m2,
+            "area_muros_m2":        area_muros,
+            "area_techo_m2":        area_techo,
+            "altura_total_m":       float(altura),
+            "area_acristalamiento": float(acrist),
+            "dist_acristalamiento": float(dist_acr),
         }
-        input_df = pd.DataFrame([{c: input_vals.get(c, 0) for c in md["feat_cols"]}])
-
         try:
-            X_in = md["pipe"].transform(input_df)
-            log_pred = md["best_model"].predict(X_in)[0]
-            pred_kwh = float(np.expm1(log_pred))
-
-            pct_rank = (df["consumo_kwh"] < pred_kwh).mean() * 100
-            efic_label = (
-                "Alta eficiencia" if pct_rank < 33 else
-                "Eficiencia media" if pct_rank < 66 else
-                "Baja eficiencia"
-            )
-            efic_color = "#3D9970" if pct_rank < 33 else ("#C9A96E" if pct_rank < 66 else "#E8621A")
+            X_in     = md["pipe"].transform(pd.DataFrame([{c: inp.get(c, 0) for c in md["feat_cols"]}]))
+            lp       = md["best_model"].predict(X_in)[0]
+            pred_kwh = float(np.expm1(lp))
+            pct      = float((df["consumo_kwh"] < pred_kwh).mean() * 100)
+            lbl      = "Alta eficiencia" if pct < 33 else ("Eficiencia media" if pct < 66 else "Baja eficiencia")
+            clr      = "#3D9970" if pct < 33 else ("#C9A96E" if pct < 66 else "#E8621A")
 
             st.markdown(f"""
             <div class="predictor-result">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;
-                          letter-spacing:0.12em;text-transform:uppercase;
-                          color:rgba(255,255,255,0.6);margin-bottom:0.6rem">
-                Consumo predicho
-              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:0.66rem;
+                          letter-spacing:0.13em;text-transform:uppercase;
+                          color:rgba(255,255,255,0.55);margin-bottom:0.5rem">consumo predicho</div>
               <div class="predictor-val">{pred_kwh:.1f}</div>
-              <div class="predictor-unit">kWh / m² · año</div>
-              <div style="margin-top:1.2rem;padding:0.6rem 1rem;
-                          background:rgba(255,255,255,0.1);border-radius:8px;
-                          font-size:0.82rem;color:rgba(255,255,255,0.85)">
-                Percentil <b style="color:{efic_color}">{pct_rank:.0f}</b>
-                en el dataset ·
-                <span style="color:{efic_color};font-weight:600">{efic_label}</span>
+              <div style="font-size:0.86rem;color:rgba(255,255,255,0.65);margin-top:0.22rem">kWh / m² · año</div>
+              <div style="margin-top:1rem;padding:0.5rem 1rem;background:rgba(255,255,255,0.10);
+                          border-radius:8px;font-size:0.81rem;color:rgba(255,255,255,0.80)">
+                Percentil <span style="color:{clr};font-weight:600">{pct:.0f}</span> ·
+                <span style="color:{clr};font-weight:600">{lbl}</span>
               </div>
-              <div style="margin-top:0.8rem;font-size:0.78rem;color:rgba(255,255,255,0.55)">
-                log-pred = {log_pred:.4f} · modelo: Random Forest
-              </div>
+              <div style="margin-top:0.6rem;font-size:0.72rem;color:rgba(255,255,255,0.38)">
+                log-pred = {lp:.4f} · Random Forest</div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Gauge Plotly
+            fig_g = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=pred_kwh,
+                number=dict(suffix=" kWh/m²",
+                            font=dict(color=TEAL_DARK, size=16, family="Playfair Display")),
+                gauge=dict(
+                    axis=dict(range=[0, float(df["consumo_kwh"].max()) * 1.05],
+                               tickfont=dict(size=9)),
+                    bar=dict(color=TEAL_MID, thickness=0.28),
+                    bgcolor=CREAM, borderwidth=0,
+                    steps=[
+                        dict(range=[0, df["consumo_kwh"].quantile(0.33)],   color="#D4EDDA"),
+                        dict(range=[df["consumo_kwh"].quantile(0.33),
+                                    df["consumo_kwh"].quantile(0.66)],       color="#FBF5E8"),
+                        dict(range=[df["consumo_kwh"].quantile(0.66),
+                                    float(df["consumo_kwh"].max()) * 1.05],  color="#FDECD5"),
+                    ],
+                    threshold=dict(line=dict(color=ORANGE, width=2), thickness=0.75, value=pred_kwh),
+                ),
+            ))
+            fig_g.update_layout(paper_bgcolor=CREAM, height=195,
+                                 margin=dict(l=20, r=20, t=20, b=10),
+                                 font=dict(family="Source Serif 4, serif"))
+            st.plotly_chart(fig_g, use_container_width=True)
+
         except Exception as e:
             st.warning(f"No se pudo calcular la predicción: {e}")
 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
-    # ── Resumen final ──
+    # Resumen
     st.markdown("""
     <div class="section-label">Resumen del proyecto</div>
     <div class="section-title">Decisiones de diseño y próximos pasos</div>
     """, unsafe_allow_html=True)
-    st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
     col_d1, col_d2 = st.columns(2, gap="large")
-
     with col_d1:
-        st.markdown("""
-        <div class="card card-accent-teal">
-          <div class="section-label">3 decisiones clave</div>
-          <div class="section-title" style="font-size:1.1rem">Por qué el modelo funciona</div>
-          <br>
-          <div style="margin-bottom:1rem">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;
-                        color:#E8621A;text-transform:uppercase;letter-spacing:0.1em">
-              Decisión 1
-            </div>
-            <div style="font-size:0.95rem;color:#2C2C2C;line-height:1.6;margin-top:0.2rem">
-              Transformación logarítmica del target. Justificada por la distribución asimétrica.
-              Penaliza errores proporcionalmente y estabiliza la varianza del modelo.
-            </div>
-          </div>
-          <div style="margin-bottom:1rem">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;
-                        color:#E8621A;text-transform:uppercase;letter-spacing:0.1em">
-              Decisión 2
-            </div>
-            <div style="font-size:0.95rem;color:#2C2C2C;line-height:1.6;margin-top:0.2rem">
-              Pipeline reproducible con ColumnTransformer. Toda la preparación encapsulada
-              en un objeto que se serializa con joblib para producción sin fugas de datos.
-            </div>
-          </div>
-          <div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;
-                        color:#E8621A;text-transform:uppercase;letter-spacing:0.1em">
-              Decisión 3
-            </div>
-            <div style="font-size:0.95rem;color:#2C2C2C;line-height:1.6;margin-top:0.2rem">
-              Muestreo estratificado para el split train/test. Critico en datasets pequeños
-              (768 muestras) para garantizar representatividad en ambos conjuntos.
-            </div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        decs = [
+            ("Transformación logarítmica del target",
+             "Justificada por la distribución asimétrica. Penaliza errores proporcionalmente y estabiliza la varianza."),
+            ("Pipeline reproducible con ColumnTransformer",
+             "Toda la preparación encapsulada en un objeto serializable con joblib para consistencia en producción."),
+            ("Muestreo estratificado para el split train/test",
+             "Crítico en datasets pequeños (768 muestras) para garantizar representatividad en ambos conjuntos."),
+        ]
+        items_d = "".join(
+            f"""<div style="margin-bottom:1rem">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:0.69rem;
+                          color:#E8621A;text-transform:uppercase;letter-spacing:0.1em">Decisión {i+1}</div>
+              <div style="font-weight:600;color:#1A5C6B;font-size:0.94rem;margin:0.18rem 0 0.18rem">{d[0]}</div>
+              <div style="font-size:0.89rem;color:#5A5A5A;line-height:1.6">{d[1]}</div>
+            </div>"""
+            for i, d in enumerate(decs)
+        )
+        st.markdown(
+            f'<div class="card card-accent-teal">'
+            f'<div class="section-label">3 decisiones clave</div>'
+            f'<div class="section-title" style="font-size:1.1rem;margin-bottom:1rem">Por qué el modelo funciona</div>'
+            f'{items_d}</div>', unsafe_allow_html=True)
 
     with col_d2:
-        proximos = [
-            ("GradientBoosting y XGBoost", "Suelen superar a Random Forest en datos tabulares"),
-            ("Optimización Bayesiana", "Optuna/Hyperopt: más eficiente que Grid/Random Search"),
-            ("Features de dominio", "U-values de materiales, zona climática, orientación solar"),
-            ("Validación con datos reales", "El UCI es simulación; validar con datos ASHRAE medidos"),
-            ("API REST con FastAPI", "Integración con sistemas de gestión de edificios (BMS)"),
-            ("Pipeline CI/CD", "Reentrenamiento automático al detectar degradación del modelo"),
+        prox = [
+            ("GradientBoosting y XGBoost",  "Suelen superar a Random Forest en datos tabulares"),
+            ("Optimización Bayesiana",       "Optuna/Hyperopt más eficiente que Grid/Random Search"),
+            ("Features de dominio físico",  "U-values de materiales, zona climática, orientación solar"),
+            ("Validación con datos reales", "UCI es simulación; contrastar con datos ASHRAE medidos"),
+            ("API REST con FastAPI",         "Integración con sistemas de gestión de edificios (BMS)"),
+            ("Pipeline CI/CD",              "Reentrenamiento automático al detectar degradación"),
         ]
         rows_p = "".join(
-            f"<tr><td>{p[0]}</td><td style='color:#7A7A7A;font-size:0.88rem'>{p[1]}</td></tr>"
-            for p in proximos
+            f"<tr><td style='font-weight:500'>{p[0]}</td>"
+            f"<td style='color:#7A7A7A;font-size:0.86rem'>{p[1]}</td></tr>"
+            for p in prox
         )
         st.markdown(f"""
         <div class="card card-accent-orange">
           <div class="section-label">Próximos pasos</div>
-          <div class="section-title" style="font-size:1.1rem">Si tuviéramos más tiempo</div>
-          <br>
+          <div class="section-title" style="font-size:1.1rem;margin-bottom:1rem">Si tuviéramos más tiempo</div>
           <div class="styled-table-wrap">
           <table class="styled-table">
             <thead><tr><th>Mejora</th><th>Justificación</th></tr></thead>
             <tbody>{rows_p}</tbody>
-          </table>
-          </div>
+          </table></div>
         </div>
         """, unsafe_allow_html=True)
 
     # Footer
     st.markdown("""
-    <div style="margin-top:3rem;padding:1.5rem 0;
-                border-top:1px solid #D4CFC9;
-                display:flex;justify-content:space-between;align-items:center">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;
-                  color:#7A7A7A;letter-spacing:0.08em">
+    <div style="margin-top:2.5rem;padding:1.2rem 0;border-top:1px solid #D4CFC9;
+                display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.69rem;color:#7A7A7A;letter-spacing:0.08em">
         UCI ENERGY EFFICIENCY DATASET · 768 muestras · 8 atributos
       </div>
       <div style="font-size:0.82rem;color:#7A7A7A;font-style:italic">
-        Basado en Hands-On Machine Learning — Aurélien Géron, Cap. 2
+        Leiry Laura Mares Cure · Hands-On Machine Learning, Cap. 2 — Aurélien Géron
       </div>
     </div>
     """, unsafe_allow_html=True)
