@@ -387,8 +387,8 @@ def load_data():
     return df
 
 
-@st.cache_data(show_spinner=False)
-def train_models(df):
+@st.cache_resource(show_spinner=False)
+def train_models(_df):
     from sklearn.model_selection import StratifiedShuffleSplit, cross_val_score
     from sklearn.pipeline import Pipeline
     from sklearn.impute import SimpleImputer
@@ -401,12 +401,12 @@ def train_models(df):
 
     feat_cols = ["compacidad_relativa","superficie_m2","area_muros_m2",
                  "area_techo_m2","altura_total_m","area_acristalamiento","dist_acristalamiento"]
-    feat_cols = [c for c in feat_cols if c in df.columns]
+    feat_cols = [c for c in feat_cols if c in _df.columns]
 
-    X = df[feat_cols].copy()
-    y = np.log1p(df["consumo_kwh"])
+    X = _df[feat_cols].copy()
+    y = np.log1p(_df["consumo_kwh"])
 
-    df_tmp = df.copy()
+    df_tmp = _df.copy()
     df_tmp["consumo_cat"] = pd.cut(df_tmp["consumo_kwh"],
                                     bins=[0,20,30,40,60,np.inf], labels=[1,2,3,4,5])
     split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
@@ -464,10 +464,10 @@ def train_models(df):
     n_imp = min(len(importances), len(ext_names))
     fi = pd.Series(importances[:n_imp], index=ext_names[:n_imp]).sort_values(ascending=False)
 
-    corr = df[feat_cols + ["consumo_kwh"]].corr()["consumo_kwh"].drop("consumo_kwh").sort_values()
+    corr = _df[feat_cols + ["consumo_kwh"]].corr()["consumo_kwh"].drop("consumo_kwh").sort_values()
 
     return {
-        "df": df, "X_train": X_train, "X_test": X_test,
+        "df": _df, "X_train": X_train, "X_test": X_test,
         "y_train": y_train, "y_test": y_test,
         "X_train_p": X_train_p, "X_test_p": X_test_p,
         "y_pred_log": y_pred_log, "y_pred_real": y_pred_real,
