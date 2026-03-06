@@ -132,6 +132,20 @@ section.main > div { padding-top: 0 !important; }
     font-size: 0.64rem; letter-spacing: 0.16em;
     text-transform: uppercase; color: #E8621A; margin-bottom: 0.25rem;
 }
+.section-label::before,
+.section-label::after { content: none !important; display: none !important; }
+/* Eliminar arrow_right y cualquier ícono de lista inyectado por Streamlit */
+details > summary { list-style: none !important; }
+details > summary::-webkit-details-marker { display: none !important; }
+[data-testid="stExpander"] summary svg,
+[data-testid="stExpander"] summary .arrow_right,
+[data-testid="stExpander"] summary [class*="arrow"] { display: none !important; }
+/* Evitar que Streamlit renderice el texto de section-label como ítem de lista */
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] div { list-style: none !important; }
+[data-testid="stMarkdownContainer"] .section-label::before { content: "" !important; }
+/* Ocultar cualquier .arrow_right que Streamlit añada al DOM */
+.arrow_right, [class*="arrow_right"], svg[class*="arrow"] { display: none !important; }
 .section-title {
     font-family: 'Playfair Display', serif !important;
     font-size: 1.45rem; font-weight: 700; color: #1A5C6B; margin: 0 0 0.4rem; line-height: 1.2;
@@ -558,24 +572,31 @@ with tab1:
 
     # Etapa 3
     st.markdown("""
-    <div class="section-label">Etapa 3</div>
-    <div class="section-title">Exploración y visualización de los datos</div>
+    <div style="list-style:none;margin:0;padding:0">
+      <div class="section-label">Etapa 3</div>
+      <div class="section-title">Exploración y visualización de los datos</div>
+    </div>
     """, unsafe_allow_html=True)
     st.markdown("<div style='height:0.7rem'></div>", unsafe_allow_html=True)
 
     # 3.1
-    with st.expander("3.1  Estadísticas descriptivas", expanded=False):
-        desc = df[md["feat_cols"] + ["consumo_kwh"]].describe().T.round(3).reset_index()
-        desc.columns = ["Atributo"] + list(desc.columns[1:])
-        hdr = "".join(f"<th>{c}</th>" for c in desc.columns)
-        bdy = "".join(
-            "<tr><td>{}</td>".format(row["Atributo"]) +
-            "".join(f"<td class='num'>{row[c]}</td>" for c in desc.columns[1:]) +
-            "</tr>" for _, row in desc.iterrows()
-        )
-        st.markdown(f"""<div class="styled-table-wrap">
-        <table class="styled-table"><thead><tr>{hdr}</tr></thead><tbody>{bdy}</tbody></table>
-        </div>""", unsafe_allow_html=True)
+    st.markdown("""
+    <div class="card card-accent-sand">
+      <div class="section-label">3.1</div>
+      <div class="section-title" style="font-size:1.1rem">Estadísticas descriptivas</div>
+    </div>
+    """, unsafe_allow_html=True)
+    desc = df[md["feat_cols"] + ["consumo_kwh"]].describe().T.round(3).reset_index()
+    desc.columns = ["Atributo"] + list(desc.columns[1:])
+    hdr = "".join(f"<th>{c}</th>" for c in desc.columns)
+    bdy = "".join(
+        "<tr><td>{}</td>".format(row["Atributo"]) +
+        "".join(f"<td class='num'>{row[c]}</td>" for c in desc.columns[1:]) +
+        "</tr>" for _, row in desc.iterrows()
+    )
+    st.markdown(f"""<div class="styled-table-wrap">
+    <table class="styled-table"><thead><tr>{hdr}</tr></thead><tbody>{bdy}</tbody></table>
+    </div>""", unsafe_allow_html=True)
 
     # 3.2 — Distribución del target (Plotly)
     st.markdown("""
@@ -1121,66 +1142,6 @@ with tab2:
 
         except Exception as e:
             st.warning(f"No se pudo calcular la predicción: {e}")
-
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-
-    # Resumen
-    st.markdown("""
-    <div class="section-label">Resumen del proyecto</div>
-    <div class="section-title">Decisiones de diseño y próximos pasos</div>
-    """, unsafe_allow_html=True)
-    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-
-    col_d1, col_d2 = st.columns(2, gap="large")
-    with col_d1:
-        decs = [
-            ("Transformación logarítmica del target",
-             "Justificada por la distribución asimétrica. Penaliza errores proporcionalmente y estabiliza la varianza."),
-            ("Pipeline reproducible con ColumnTransformer",
-             "Toda la preparación encapsulada en un objeto serializable con joblib para consistencia en producción."),
-            ("Muestreo estratificado para el split train/test",
-             "Crítico en datasets pequeños (768 muestras) para garantizar representatividad en ambos conjuntos."),
-        ]
-        items_d = "".join(
-            f"""<div style="margin-bottom:1rem">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:0.69rem;
-                          color:#E8621A;text-transform:uppercase;letter-spacing:0.1em">Decisión {i+1}</div>
-              <div style="font-weight:600;color:#1A5C6B;font-size:0.94rem;margin:0.18rem 0 0.18rem">{d[0]}</div>
-              <div style="font-size:0.89rem;color:#5A5A5A;line-height:1.6">{d[1]}</div>
-            </div>"""
-            for i, d in enumerate(decs)
-        )
-        st.markdown(
-            f'<div class="card card-accent-teal">'
-            f'<div class="section-label">3 decisiones clave</div>'
-            f'<div class="section-title" style="font-size:1.1rem;margin-bottom:1rem">Por qué el modelo funciona</div>'
-            f'{items_d}</div>', unsafe_allow_html=True)
-
-    with col_d2:
-        prox = [
-            ("GradientBoosting y XGBoost",  "Suelen superar a Random Forest en datos tabulares"),
-            ("Optimización Bayesiana",       "Optuna/Hyperopt más eficiente que Grid/Random Search"),
-            ("Features de dominio físico",  "U-values de materiales, zona climática, orientación solar"),
-            ("Validación con datos reales", "UCI es simulación; contrastar con datos ASHRAE medidos"),
-            ("API REST con FastAPI",         "Integración con sistemas de gestión de edificios (BMS)"),
-            ("Pipeline CI/CD",              "Reentrenamiento automático al detectar degradación"),
-        ]
-        rows_p = "".join(
-            f"<tr><td style='font-weight:500'>{p[0]}</td>"
-            f"<td style='color:#7A7A7A;font-size:0.86rem'>{p[1]}</td></tr>"
-            for p in prox
-        )
-        st.markdown(f"""
-        <div class="card card-accent-orange">
-          <div class="section-label">Próximos pasos</div>
-          <div class="section-title" style="font-size:1.1rem;margin-bottom:1rem">Si tuviéramos más tiempo</div>
-          <div class="styled-table-wrap">
-          <table class="styled-table">
-            <thead><tr><th>Mejora</th><th>Justificación</th></tr></thead>
-            <tbody>{rows_p}</tbody>
-          </table></div>
-        </div>
-        """, unsafe_allow_html=True)
 
     # Footer
     st.markdown("""
